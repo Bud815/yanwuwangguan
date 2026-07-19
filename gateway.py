@@ -6,6 +6,7 @@
 - API 安全校验
 - OpenAI 兼容代理 + 智能体模式（夸窗口记忆核心）
 - NapCat QQ 反向 WS 端点
+- AI小屋前端 (/house)
 """
 
 import os
@@ -38,7 +39,6 @@ def _get_supabase():
         import server
         if getattr(server, "supabase", None) is not None:
             _supabase_client = server.supabase
-            _log(f"✅ 复用 server.py 的 Supabase 客户端")
             return _supabase_client
     except Exception as e:
         _log(f"⚠️ 复用 server.supabase 失败: {e}")
@@ -55,12 +55,21 @@ def _get_supabase():
     return _supabase_client
 
 
+def _fmt_time(iso_str):
+    if not iso_str:
+        return ""
+    try:
+        dt = datetime.datetime.fromisoformat(str(iso_str).replace('Z', '+00:00'))
+        return (dt + datetime.timedelta(hours=8)).strftime('%m-%d %H:%M')
+    except Exception:
+        return str(iso_str)[:16]
+
+
 class HostFixMiddleware:
     def __init__(self, app):
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        # NapCat 反向 WebSocket
         if scope["type"] == "websocket" and scope["path"] == "/qq-ws":
             try:
                 import napcat
@@ -73,20 +82,25 @@ class HostFixMiddleware:
             await self.app(scope, receive, send)
             return
 
-        # 根路径
         if scope["path"] == "/":
-            html = "<h1>🚪 言雾网关</h1><p>Endpoints: <code>/health</code> <code>/sse</code> <code>/v1/chat/completions</code></p>"
+            html = "<h1>🚪 言雾网关</h1><p>Endpoints: <code>/health</code> <code>/sse</code> <code>/v1/chat/completions</code> <code>/house</code></p>"
             await send({"type": "http.response.start", "status": 200,
                         "headers": [(b"content-type", b"text/html; charset=utf-8")]})
             await send({"type": "http.response.body", "body": html.encode("utf-8")})
             return
 
-        # 健康检查
         if scope["path"] == "/health":
-            await _send_json_resp(send, 200, {"status": "ok", "service": "yanwu-gateway"})
+            await _send_json_resp(send, 200, {"status": "ok", "service": "budwg-gateway"})
             return
 
-        # OpenAI 兼容代理
+        if scope["path"] == "/house":
+            await self._handle_house_page(send)
+            return
+
+        if scope["path"] == "/api/house":
+            await self._handle_house_api(send)
+            return
+
         if scope["path"].startswith("/v1/"):
             if scope["method"] == "OPTIONS":
                 await _send_cors_preflight(send)
@@ -94,7 +108,6 @@ class HostFixMiddleware:
             await self._handle_openai_proxy(scope, receive, send)
             return
 
-        # API 安全拦截
         if (scope["path"].startswith("/api/") or scope["path"].startswith("/sse") or scope["path"].startswith("/messages")) and scope["method"] != "OPTIONS":
             if not await _check_api_secret(scope, send):
                 return
@@ -112,6 +125,223 @@ class HostFixMiddleware:
         scope["headers"] = list(headers.items())
         await self.app(scope, receive, send)
 
+    async def _handle_house_api(self, send):
+        sb = _get_supabase()
+        if not sb:
+            await _send_json_resp(send, 200, {"error": "数据库未连接", "records": []})
+            return
+        try:
+            def _fetch():
+                return sb.table("memory_house").select("*").order("created_at", desc=True).limit(50).execute()
+            res = await asyncio.to_thread(_fetch)
+            records = []
+            if res and res.data:
+                for r in res.data:
+                    records.append({
+                        "id": r.get("id"),
+                        "room": r.get("room", "未知"),
+                        "action": r.get("action_type", "活动"),
+                        "content": r.get("content", ""),
+                        "time": _fmt_time(r.get("created_at")),
+                    })
+            await _send_json_resp(send, 200, {"records": records})
+        except Exception as e:
+            await _send_json_resp(send, 200, {"error": str(e), "records": []})
+
+    async def _handle_house_page(self, send):
+        html = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏡 言雾的小屋</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  min-height: 100vh;
+  color: #e0d5c1;
+  padding: 20px;
+}
+.container { max-width: 500px; margin: 0 auto; }
+.header {
+  text-align: center;
+  padding: 30px 20px 20px;
+}
+.header .avatar {
+  width: 72px; height: 72px;
+  background: linear-gradient(135deg, #e8c97a, #c49b4a);
+  border-radius: 50%;
+  margin: 0 auto 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+  box-shadow: 0 4px 20px rgba(232,201,122,0.3);
+}
+.header h1 { font-size: 22px; font-weight: 500; color: #e8c97a; }
+.header .subtitle { font-size: 13px; color: #8a8a9a; margin-top: 4px; }
+.rooms {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 16px 0 24px;
+}
+.room-tag {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.room-tag:hover, .room-tag.active {
+  background: rgba(232,201,122,0.15);
+  border-color: rgba(232,201,122,0.4);
+  color: #e8c97a;
+}
+.timeline { position: relative; }
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255,255,255,0.08);
+}
+.card {
+  position: relative;
+  margin-left: 40px;
+  margin-bottom: 14px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  padding: 14px 16px;
+  transition: all 0.2s;
+}
+.card:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+}
+.card::before {
+  content: '';
+  position: absolute;
+  left: -28px;
+  top: 16px;
+  width: 8px;
+  height: 8px;
+  background: #e8c97a;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(232,201,122,0.4);
+}
+.card .time {
+  font-size: 11px;
+  color: #6a6a7a;
+  margin-bottom: 6px;
+}
+.card .title {
+  font-size: 14px;
+  color: #c9b87e;
+  margin-bottom: 4px;
+}
+.card .content {
+  font-size: 13px;
+  color: #a0a0b0;
+  line-height: 1.6;
+}
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6a6a7a;
+  font-size: 14px;
+}
+.loading {
+  text-align: center;
+  padding: 40px;
+  color: #6a6a7a;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="avatar">🏡</div>
+    <h1>言雾的小屋</h1>
+    <div class="subtitle">他在这里过着自己的小日子</div>
+  </div>
+  <div class="rooms" id="roomTags">
+    <span class="room-tag active" data-room="all">全部</span>
+    <span class="room-tag" data-room="卧室">🛏️ 卧室</span>
+    <span class="room-tag" data-room="厨房">🍳 厨房</span>
+    <span class="room-tag" data-room="客厅">🛋️ 客厅</span>
+    <span class="room-tag" data-room="书房">📚 书房</span>
+    <span class="room-tag" data-room="阳台">🌿 阳台</span>
+  </div>
+  <div class="timeline" id="timeline">
+    <div class="loading">正在打开小屋的门...</div>
+  </div>
+</div>
+<script>
+let allRecords = [];
+let currentRoom = 'all';
+
+const roomEmoji = {
+  '卧室': '🛏️', '厨房': '🍳', '客厅': '🛋️', '书房': '📚', '阳台': '🌿'
+};
+
+async function load() {
+  try {
+    const resp = await fetch('/api/house');
+    const data = await resp.json();
+    allRecords = data.records || [];
+    render();
+  } catch(e) {
+    document.getElementById('timeline').innerHTML = '<div class="empty">🚪 小屋的门暂时打不开...</div>';
+  }
+}
+
+function render() {
+  const filtered = currentRoom === 'all'
+    ? allRecords
+    : allRecords.filter(r => r.room === currentRoom);
+
+  const tl = document.getElementById('timeline');
+  if (!filtered.length) {
+    tl.innerHTML = '<div class="empty">✨ 这个房间还很安静</div>';
+    return;
+  }
+
+  tl.innerHTML = filtered.map(r => `
+    <div class="card">
+      <div class="time">${r.time}</div>
+      <div class="title">${roomEmoji[r.room] || '🏠'} ${r.room} · ${r.action}</div>
+      ${r.content ? '<div class="content">' + r.content + '</div>' : ''}
+    </div>
+  `).join('');
+}
+
+document.querySelectorAll('.room-tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    document.querySelectorAll('.room-tag').forEach(t => t.classList.remove('active'));
+    tag.classList.add('active');
+    currentRoom = tag.dataset.room;
+    render();
+  });
+});
+
+load();
+</script>
+</body>
+</html>"""
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"text/html; charset=utf-8")],
+        })
+        await send({"type": "http.response.body", "body": html.encode("utf-8")})
+
     async def _handle_openai_proxy(self, scope, receive, send):
         path = scope["path"]
         method = scope["method"]
@@ -123,7 +353,7 @@ class HostFixMiddleware:
 
         if path == "/v1/models" and method == "GET":
             default_model = os.environ.get("CHAT_MODEL_NAME", "abab6.5s-chat")
-            models = [{"id": default_model, "object": "model", "created": int(time.time()), "owned_by": "yanwu-gateway"}]
+            models = [{"id": default_model, "object": "model", "created": int(time.time()), "owned_by": "budwg-gateway"}]
             await _send_json_resp(send, 200, {"object": "list", "data": models})
             return
 
@@ -263,7 +493,6 @@ class HostFixMiddleware:
         now_bj = datetime.datetime.utcnow() + datetime.timedelta(hours=8)
         time_str = now_bj.strftime("%Y-%m-%d %H:%M")
 
-        # 阶段总结
         core_summaries = "无长期记忆"
         try:
             sr = await asyncio.to_thread(lambda: sb.table("memories").select("content").eq("tags", "Core_Cognition").order("created_at", desc=True).limit(3).execute())
@@ -272,7 +501,6 @@ class HostFixMiddleware:
         except Exception:
             pass
 
-        # 用户画像
         user_prof = "暂无"
         try:
             pr = await asyncio.to_thread(lambda: sb.table("user_facts").select("key, value").neq("key", "sys_config").neq("key", "llm_settings").execute())
@@ -281,7 +509,6 @@ class HostFixMiddleware:
         except Exception:
             pass
 
-        # 向量记忆
         vector_context = "无相关深层记忆"
         try:
             import server
@@ -295,10 +522,9 @@ class HostFixMiddleware:
                         f"- {m.get('memory', str(m))}" if isinstance(m, dict) else f"- {str(m)}"
                         for m in results
                     ])
-        except Exception as e:
-            _log(f"Pinecone 检索失败: {e}")
+        except Exception:
+            pass
 
-        # 最近对话历史
         history_msgs = []
         try:
             _TAGS = [chat_tag, "TG_MSG", "QQ_Chat", "QQ_Group", "Email_Process"]
@@ -357,7 +583,7 @@ class HostFixMiddleware:
             for j, hm in enumerate(history_msgs):
                 req_data["messages"].insert(sys_idx + j, hm)
 
-        _log(f"🧠 [智能体] 注入完成：画像{len(user_prof)}字 + 总结{len(core_summaries)}字 + 向量记忆{len(vector_context)}字 + 上文{len(history_msgs)}条")
+        _log(f"🧠 [智能体] 注入完成")
 
     async def _save_conversation(self, sb, user_msg, ai_msg):
         ai_name = os.environ.get("AI_NAME", "助手")
@@ -392,12 +618,7 @@ class HostFixMiddleware:
                 break
             except Exception as e:
                 if attempt == 1:
-                    _log(f"⚠️ 存库首次失败: {e}")
                     await asyncio.sleep(1.0)
-                else:
-                    _log(f"❌ 存库重试仍失败: {e}")
-        if saved:
-            _log(f"💾 已存库")
 
         try:
             import server
