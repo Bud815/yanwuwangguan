@@ -1,0 +1,20 @@
+# 言雾网关 核心依赖
+mcp
+uvicorn
+python-dotenv
+starlette
+pydantic
+requests
+websockets
+
+# 数据库
+supabase
+
+# LLM SDK
+openai
+
+# 向量记忆
+pinecone
+
+# 网页搜索
+duckduckgo-search

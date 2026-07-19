@@ -1,0 +1,17 @@
+services:
+  yanwu-gateway:
+    build: .
+    container_name: yanwu-gateway
+    restart: unless-stopped
+    ports:
+      - "${PORT:-10000}:10000"
+    env_file:
+      - .env
+    environment:
+      - PORT=10000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:10000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      start_period: 15s
+      retries: 3
