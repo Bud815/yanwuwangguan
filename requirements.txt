@@ -18,3 +18,6 @@ pinecone
 
 # 网页搜索
 duckduckgo-search
+
+# 加密
+pycryptodome
