@@ -153,114 +153,145 @@ class HostFixMiddleware:
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>🏡 言雾的小屋</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  font-family: -apple-system, "Microsoft YaHei", sans-serif;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  min-height: 100vh;
-  color: #e0d5c1;
-  padding: 20px;
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system,"Noto Serif SC","Microsoft YaHei",serif;
+  background:#f5efe6;
+  min-height:100vh;
+  color:#4a3728;
+  padding:0 16px 32px;
+  background-image:radial-gradient(circle at 20% 30%, rgba(200,170,140,0.12) 0%, transparent 50%),
+                   radial-gradient(circle at 80% 70%, rgba(200,170,140,0.08) 0%, transparent 50%);
 }
-.container { max-width: 500px; margin: 0 auto; }
-.header {
-  text-align: center;
-  padding: 30px 20px 20px;
+.container{max-width:480px;margin:0 auto}
+.header{
+  text-align:center;
+  padding:28px 16px 16px;
+  position:relative;
 }
-.header .avatar {
-  width: 72px; height: 72px;
-  background: linear-gradient(135deg, #e8c97a, #c49b4a);
-  border-radius: 50%;
-  margin: 0 auto 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36px;
-  box-shadow: 0 4px 20px rgba(232,201,122,0.3);
+.header::after{
+  content:'';
+  display:block;
+  width:60px;
+  height:2px;
+  background:linear-gradient(90deg,transparent,#c4a67a,transparent);
+  margin:12px auto 0;
 }
-.header h1 { font-size: 22px; font-weight: 500; color: #e8c97a; }
-.header .subtitle { font-size: 13px; color: #8a8a9a; margin-top: 4px; }
-.rooms {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin: 16px 0 24px;
+.header .avatar{
+  width:64px;height:64px;
+  background:linear-gradient(135deg,#e8d5b7,#c4a67a);
+  border-radius:50%;
+  margin:0 auto 10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:30px;
+  box-shadow:0 4px 20px rgba(196,166,122,0.4);
+  border:2px solid rgba(255,255,255,0.5);
 }
-.room-tag {
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.2s;
+.header h1{
+  font-size:20px;font-weight:600;
+  color:#5a4030;letter-spacing:1px;
 }
-.room-tag:hover, .room-tag.active {
-  background: rgba(232,201,122,0.15);
-  border-color: rgba(232,201,122,0.4);
-  color: #e8c97a;
+.header .subtitle{
+  font-size:12px;color:#a09080;
+  margin-top:4px;letter-spacing:0.5px;
 }
-.timeline { position: relative; }
-.timeline::before {
-  content: '';
-  position: absolute;
-  left: 20px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: rgba(255,255,255,0.08);
+.rooms{
+  display:flex;gap:6px;
+  justify-content:center;flex-wrap:wrap;
+  margin:16px 0 20px;
 }
-.card {
-  position: relative;
-  margin-left: 40px;
-  margin-bottom: 14px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
-  padding: 14px 16px;
-  transition: all 0.2s;
+.room-tag{
+  background:rgba(196,166,122,0.15);
+  border:1px solid rgba(196,166,122,0.25);
+  border-radius:18px;
+  padding:5px 12px;
+  font-size:12px;
+  cursor:pointer;
+  transition:all 0.2s;
+  color:#7a6a5a;
 }
-.card:hover {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.12);
+.room-tag:hover,.room-tag.active{
+  background:rgba(196,166,122,0.3);
+  border-color:#c4a67a;
+  color:#4a3728;
 }
-.card::before {
-  content: '';
-  position: absolute;
-  left: -28px;
-  top: 16px;
-  width: 8px;
-  height: 8px;
-  background: #e8c97a;
-  border-radius: 50%;
-  box-shadow: 0 0 8px rgba(232,201,122,0.4);
+.timeline{position:relative;padding-left:28px}
+.timeline::before{
+  content:'';
+  position:absolute;
+  left:10px;top:8px;bottom:8px;
+  width:2px;
+  background:linear-gradient(180deg,#c4a67a,rgba(196,166,122,0.3));
+  border-radius:1px;
 }
-.card .time {
-  font-size: 11px;
-  color: #6a6a7a;
-  margin-bottom: 6px;
+.card{
+  position:relative;
+  margin-bottom:16px;
+  background:rgba(255,255,255,0.7);
+  border:1px solid rgba(196,166,122,0.2);
+  border-radius:14px;
+  padding:14px 16px;
+  transition:all 0.2s;
+  backdrop-filter:blur(4px);
+  box-shadow:0 2px 8px rgba(74,55,40,0.06);
 }
-.card .title {
-  font-size: 14px;
-  color: #c9b87e;
-  margin-bottom: 4px;
+.card:hover{
+  background:rgba(255,255,255,0.85);
+  border-color:rgba(196,166,122,0.35);
+  box-shadow:0 4px 16px rgba(74,55,40,0.1);
 }
-.card .content {
-  font-size: 13px;
-  color: #a0a0b0;
-  line-height: 1.6;
+.card::before{
+  content:'';
+  position:absolute;
+  left:-24px;top:16px;
+  width:9px;height:9px;
+  background:#c4a67a;
+  border-radius:50%;
+  border:2px solid #f5efe6;
+  box-shadow:0 0 0 2px rgba(196,166,122,0.3);
 }
-.empty {
-  text-align: center;
-  padding: 60px 20px;
-  color: #6a6a7a;
-  font-size: 14px;
+.card .time{
+  font-size:11px;
+  color:#a09080;
+  margin-bottom:4px;
+  font-family:-apple-system,sans-serif;
 }
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: #6a6a7a;
+.card .room-label{
+  font-size:12px;
+  color:#8a7a6a;
+  margin-bottom:5px;
+  display:flex;align-items:center;gap:4px;
+}
+.card .room-label .emoji{font-size:14px}
+.card .content{
+  font-size:13px;
+  color:#4a3728;
+  line-height:1.7;
+}
+.empty{
+  text-align:center;padding:60px 20px;
+  color:#a09080;font-size:14px;
+}
+.loading{
+  text-align:center;padding:30px 20px;
+  color:#a09080;
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.spinner{
+  width:28px;height:28px;
+  border:2px solid rgba(196,166,122,0.2);
+  border-top-color:#c4a67a;
+  border-radius:50%;
+  animation:spin 0.8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.stats{
+  text-align:center;
+  font-size:12px;color:#a09080;
+  margin-bottom:6px;
 }
 </style>
 </head>
@@ -272,65 +303,73 @@ body {
     <div class="subtitle">他在这里过着自己的小日子</div>
   </div>
   <div class="rooms" id="roomTags">
-    <span class="room-tag active" data-room="all">全部</span>
+    <span class="room-tag active" data-room="all">✨ 全部</span>
     <span class="room-tag" data-room="卧室">🛏️ 卧室</span>
     <span class="room-tag" data-room="厨房">🍳 厨房</span>
     <span class="room-tag" data-room="客厅">🛋️ 客厅</span>
     <span class="room-tag" data-room="书房">📚 书房</span>
     <span class="room-tag" data-room="阳台">🌿 阳台</span>
   </div>
+  <div class="stats" id="stats"></div>
   <div class="timeline" id="timeline">
-    <div class="loading">正在打开小屋的门...</div>
+    <div class="loading"><div class="spinner"></div><span>正在打开小屋的门...</span></div>
   </div>
 </div>
 <script>
-let allRecords = [];
-let currentRoom = 'all';
-
-const roomEmoji = {
-  '卧室': '🛏️', '厨房': '🍳', '客厅': '🛋️', '书房': '📚', '阳台': '🌿'
-};
-
-async function load() {
-  try {
-    const resp = await fetch('/api/house');
-    const data = await resp.json();
-    allRecords = data.records || [];
-    render();
-  } catch(e) {
-    document.getElementById('timeline').innerHTML = '<div class="empty">🚪 小屋的门暂时打不开...</div>';
-  }
+var allRecords=[];var currentRoom='all';
+var roomEmoji={卧室:'🛏️',厨房:'🍳',客厅:'🛋️',书房:'📚',阳台:'🌿'};
+function fmtTime(t){
+  if(!t)return '';
+  var d=new Date(t.replace(' ','T'));
+  if(isNaN(d.getTime()))return t;
+  var m=(d.getMonth()+1+'').padStart(2,'0');
+  var dd=(d.getDate()+'').padStart(2,'0');
+  var h=(d.getHours()+'').padStart(2,'0');
+  var mm=(d.getMinutes()+'').padStart(2,'0');
+  return m+'-'+dd+' '+h+':'+mm;
 }
-
-function render() {
-  const filtered = currentRoom === 'all'
-    ? allRecords
-    : allRecords.filter(r => r.room === currentRoom);
-
-  const tl = document.getElementById('timeline');
-  if (!filtered.length) {
-    tl.innerHTML = '<div class="empty">✨ 这个房间还很安静</div>';
+function load(){
+  var tl=document.getElementById('timeline');
+  fetch('/api/house').then(function(r){return r.json()}).then(function(data){
+    allRecords=data.records||[];
+    render();
+  }).catch(function(){
+    tl.innerHTML='<div class="empty">🚪 小屋的门暂时打不开...</div>';
+  });
+}
+function render(){
+  var filtered=currentRoom==='all'?allRecords:allRecords.filter(function(r){return r.room===currentRoom});
+  var tl=document.getElementById('timeline');
+  var st=document.getElementById('stats');
+  if(currentRoom==='all'){
+    st.textContent='共 '+allRecords.length+' 条记录';
+  }else{
+    st.textContent='共 '+filtered.length+' 条记录';
+  }
+  if(!filtered.length){
+    tl.innerHTML='<div class="empty">✨ 这个房间还很安静</div>';
     return;
   }
-
-  tl.innerHTML = filtered.map(r => `
-    <div class="card">
-      <div class="time">${r.time}</div>
-      <div class="title">${roomEmoji[r.room] || '🏠'} ${r.room} · ${r.action}</div>
-      ${r.content ? '<div class="content">' + r.content + '</div>' : ''}
-    </div>
-  `).join('');
+  var html='';
+  for(var i=0;i<filtered.length;i++){
+    var r=filtered[i];
+    var em=roomEmoji[r.room]||'🏠';
+    html+='<div class="card">'+
+      '<div class="time">'+fmtTime(r.time)+'</div>'+
+      '<div class="room-label"><span class="emoji">'+em+'</span>'+r.room+' · '+r.action+'</div>'+
+      (r.content?'<div class="content">'+r.content+'</div>':'')+
+    '</div>';
+  }
+  tl.innerHTML=html;
 }
-
-document.querySelectorAll('.room-tag').forEach(tag => {
-  tag.addEventListener('click', () => {
-    document.querySelectorAll('.room-tag').forEach(t => t.classList.remove('active'));
+document.querySelectorAll('.room-tag').forEach(function(tag){
+  tag.addEventListener('click',function(){
+    document.querySelectorAll('.room-tag').forEach(function(t){t.classList.remove('active')});
     tag.classList.add('active');
-    currentRoom = tag.dataset.room;
+    currentRoom=tag.dataset.room;
     render();
   });
 });
-
 load();
 </script>
 </body>
