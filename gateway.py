@@ -7,6 +7,8 @@
 - OpenAI 兼容代理 + 智能体模式（夸窗口记忆核心）
 - NapCat QQ 反向 WS 端点
 - AI小屋前端 (/house)
+- 网易云音乐播放器 (/music)
+- Tidefall 身体状态面板 (/tidefall)
 """
 
 import os
@@ -65,6 +67,40 @@ def _fmt_time(iso_str):
         return str(iso_str)[:16]
 
 
+def _read_html(filename):
+    try:
+        base = os.path.dirname(__file__)
+        path = os.path.join(base, filename)
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        _log(f"⚠️ 读取 {filename} 失败: {e}")
+        return f"<h1>加载失败</h1><p>{e}</p>"
+
+
+def _netease_api(path, params=None, data=None, method="GET"):
+    cookie = os.environ.get("NETEASE_COOKIE", "").strip()
+    if not cookie:
+        return {"error": "未配置 NETEASE_COOKIE"}
+    url = f"https://music.163.com{path}"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0",
+        "Referer": "https://music.163.com/",
+        "Cookie": cookie,
+    }
+    try:
+        if method == "GET":
+            resp = requests.get(url, headers=headers, params=params, timeout=15)
+        else:
+            headers["Content-Type"] = "application/x-www-form-urlencoded"
+            resp = requests.post(url, headers=headers, data=data, params=params, timeout=15)
+        if resp.status_code != 200:
+            return {"error": f"HTTP {resp.status_code}"}
+        return resp.json()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 class HostFixMiddleware:
     def __init__(self, app):
         self.app = app
@@ -82,33 +118,50 @@ class HostFixMiddleware:
             await self.app(scope, receive, send)
             return
 
-        if scope["path"] == "/":
-            html = "<h1>🚪 言雾网关</h1><p>Endpoints: <code>/health</code> <code>/sse</code> <code>/v1/chat/completions</code> <code>/house</code></p>"
+        path = scope["path"]
+
+        if path == "/":
+            html = "<h1>🚪 言雾网关</h1><p>Endpoints: <code>/health</code> <code>/sse</code> <code>/v1/chat/completions</code> <code>/house</code> <code>/music</code> <code>/tidefall</code></p>"
             await send({"type": "http.response.start", "status": 200,
                         "headers": [(b"content-type", b"text/html; charset=utf-8")]})
             await send({"type": "http.response.body", "body": html.encode("utf-8")})
             return
 
-        if scope["path"] == "/health":
+        if path == "/health":
             await _send_json_resp(send, 200, {"status": "ok", "service": "budwg-gateway"})
             return
 
-        if scope["path"] == "/house":
+        if path == "/house":
             await self._handle_house_page(send)
             return
 
-        if scope["path"] == "/api/house":
+        if path == "/api/house":
             await self._handle_house_api(send)
             return
 
-        if scope["path"].startswith("/v1/"):
+        if path == "/music":
+            await self._handle_music_page(send)
+            return
+
+        if path == "/tidefall":
+            await self._handle_tidefall_page(send)
+            return
+
+        if path.startswith("/api/music/"):
+            if scope["method"] == "OPTIONS":
+                await _send_cors_preflight(send)
+                return
+            await self._handle_music_api(path, send)
+            return
+
+        if path.startswith("/v1/"):
             if scope["method"] == "OPTIONS":
                 await _send_cors_preflight(send)
                 return
             await self._handle_openai_proxy(scope, receive, send)
             return
 
-        if (scope["path"].startswith("/api/") or scope["path"].startswith("/sse") or scope["path"].startswith("/messages")) and scope["method"] != "OPTIONS":
+        if (path.startswith("/api/") or path.startswith("/sse") or path.startswith("/messages")) and scope["method"] != "OPTIONS":
             if not await _check_api_secret(scope, send):
                 return
 
@@ -116,7 +169,7 @@ class HostFixMiddleware:
             await _send_cors_preflight(send)
             return
 
-        if scope["path"] == "/api/logs":
+        if path == "/api/logs":
             await self._handle_logs(send)
             return
 
@@ -124,6 +177,95 @@ class HostFixMiddleware:
         headers[b"host"] = b"localhost:8000"
         scope["headers"] = list(headers.items())
         await self.app(scope, receive, send)
+
+    async def _handle_music_page(self, send):
+        html = _read_html("music.html")
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"text/html; charset=utf-8")],
+        })
+        await send({"type": "http.response.body", "body": html.encode("utf-8")})
+
+    async def _handle_tidefall_page(self, send):
+        html = _read_html("tidefall.html")
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"text/html; charset=utf-8")],
+        })
+        await send({"type": "http.response.body", "body": html.encode("utf-8")})
+
+    async def _handle_music_api(self, path, send):
+        import urllib.parse
+        parsed = urllib.parse.urlparse(f"http://localhost{path}")
+        qs = urllib.parse.parse_qs(parsed.query)
+        route = parsed.path.replace("/api/music/", "")
+
+        try:
+            if route == "search":
+                keyword = qs.get("keyword", [""])[0]
+                if not keyword:
+                    await _send_json_resp(send, 200, {"result": {"songs": []}})
+                    return
+                data = {"s": keyword, "type": 1, "limit": 20, "offset": 0}
+                result = await asyncio.to_thread(_netease_api, "/api/search/get", data=data, method="POST")
+                await _send_json_resp(send, 200, result)
+
+            elif route == "playlists":
+                uid = qs.get("uid", [""])[0]
+                if not uid:
+                    result = await asyncio.to_thread(_netease_api, "/api/user/playlist", {"limit": 30, "offset": 0})
+                else:
+                    result = await asyncio.to_thread(_netease_api, "/api/user/playlist", {"uid": uid, "limit": 30, "offset": 0})
+                if "playlist" in result:
+                    pls = []
+                    for p in result["playlist"]:
+                        pls.append({
+                            "id": p["id"],
+                            "name": p["name"],
+                            "coverImg": p.get("coverImgUrl", ""),
+                            "trackCount": p.get("trackCount", 0),
+                        })
+                    await _send_json_resp(send, 200, {"playlists": pls})
+                else:
+                    await _send_json_resp(send, 200, {"playlists": []})
+
+            elif route == "playlist/detail":
+                pid = qs.get("id", [""])[0]
+                if not pid:
+                    await _send_json_resp(send, 200, {"playlist": {"tracks": []}})
+                    return
+                result = await asyncio.to_thread(_netease_api, "/api/playlist/detail", {"id": pid})
+                await _send_json_resp(send, 200, result)
+
+            elif route == "song/url":
+                sid = qs.get("id", [""])[0]
+                if not sid:
+                    await _send_json_resp(send, 200, {"data": []})
+                    return
+                result = await asyncio.to_thread(
+                    _netease_api, "/api/song/enhance/player/url",
+                    {"id": sid, "ids": f"[{sid}]", "br": 320000}
+                )
+                await _send_json_resp(send, 200, result)
+
+            elif route == "lyric":
+                sid = qs.get("id", [""])[0]
+                if not sid:
+                    await _send_json_resp(send, 200, {"lrc": {"lyric": ""}})
+                    return
+                result = await asyncio.to_thread(
+                    _netease_api, "/api/song/lyric",
+                    {"id": sid, "lv": 1, "kv": 1, "tv": -1}
+                )
+                await _send_json_resp(send, 200, result)
+
+            else:
+                await _send_json_resp(send, 404, {"error": f"Unknown music API: {route}"})
+        except Exception as e:
+            _log(f"❌ Music API 错误 ({route}): {e}")
+            await _send_json_resp(send, 500, {"error": str(e)})
 
     async def _handle_house_api(self, send):
         sb = _get_supabase()
