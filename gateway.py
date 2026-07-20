@@ -6,7 +6,7 @@
 - API 安全校验
 - OpenAI 兼容代理 + 智能体模式（夸窗口记忆核心）
 - NapCat QQ 反向 WS 端点
-- AI小屋前端 (/house)
+- AI小屋前端 (/house + /house/api/*)
 - Tidefall 身体状态面板 (/tidefall)
 """
 
@@ -107,12 +107,16 @@ class HostFixMiddleware:
             await _send_json_resp(send, 200, {"status": "ok", "service": "budwg-gateway"})
             return
 
+        # ---------- 🏡 AI 小屋 ----------
         if path == "/house":
             await self._handle_house_page(send)
             return
 
-        if path == "/api/house":
-            await self._handle_house_api(send)
+        if path.startswith("/house/api/"):
+            if scope["method"] == "OPTIONS":
+                await _send_cors_preflight(send)
+                return
+            await self._handle_house_api(scope, receive, send)
             return
 
         if path == "/api/tidefall/state":
@@ -150,6 +154,121 @@ class HostFixMiddleware:
         scope["headers"] = list(headers.items())
         await self.app(scope, receive, send)
 
+    # ==========================================
+    # 🏡 AI 小屋
+    # ==========================================
+
+    async def _handle_house_page(self, send):
+        """返回小屋前端页面"""
+        html = _read_html("house.html")
+        if not html or "<html" not in html:
+            html = "<html><body><h1>🏡 小屋正在搭建</h1></body></html>"
+        await send({
+            "type": "http.response.start",
+            "status": 200,
+            "headers": [(b"content-type", b"text/html; charset=utf-8")],
+        })
+        await send({"type": "http.response.body", "body": html.encode("utf-8")})
+
+    async def _handle_house_api(self, scope, receive, send):
+        """小屋 API：读取留言/日记/猫状态/活动记录"""
+        sb = _get_supabase()
+        if not sb:
+            await _send_json_resp(send, 200, {"error": "数据库未连接"})
+            return
+
+        path = scope["path"]
+        method = scope["method"]
+        api_path = path[len("/house/api/"):]
+
+        # 读 POST 请求体
+        body = b""
+        if method == "POST":
+            while True:
+                msg = await receive()
+                body += msg.get("body", b"")
+                if not msg.get("more_body", False):
+                    break
+
+        try:
+            result = None
+
+            # ---- GET /house/api/cat ----
+            if api_path == "cat" and method == "GET":
+                def _get_cat():
+                    r = sb.table("cat_state").select("*").order("updated_at", desc=True).limit(1).execute()
+                    return r.data[0] if r.data else None
+                result = await asyncio.to_thread(_get_cat)
+
+            # ---- GET /house/api/notes ----
+            elif api_path.startswith("notes") and method == "GET":
+                from urllib.parse import parse_qs
+                qs = scope.get("query_string", b"").decode("utf-8")
+                params = parse_qs(qs) if qs else {}
+                limit = int(params.get("limit", [50])[0])
+                def _get_notes():
+                    return sb.table("house_notes").select("*").order("created_at", desc=True).limit(limit).execute()
+                r = await asyncio.to_thread(_get_notes)
+                result = r.data if r.data else []
+
+            # ---- POST /house/api/notes ----
+            elif api_path == "notes" and method == "POST":
+                data = json.loads(body.decode("utf-8"))
+                author = data.get("author", "言雾")
+                content = data.get("content", "")
+                room = data.get("room", "客厅")
+                if content:
+                    def _add_note():
+                        return sb.table("house_notes").insert({
+                            "author": author, "content": content, "room": room
+                        }).execute()
+                    await asyncio.to_thread(_add_note)
+                    result = {"ok": True}
+                else:
+                    result = {"error": "内容不能为空"}
+
+            # ---- GET /house/api/diary ----
+            elif api_path.startswith("diary") and method == "GET":
+                from urllib.parse import parse_qs
+                qs = scope.get("query_string", b"").decode("utf-8")
+                params = parse_qs(qs) if qs else {}
+                limit = int(params.get("limit", [15])[0])
+                def _get_diary():
+                    return sb.table("diary_entries").select("*").eq("private", False).order("created_at", desc=True).limit(limit).execute()
+                r = await asyncio.to_thread(_get_diary)
+                result = r.data if r.data else []
+
+            # ---- GET /house/api/house-activities ----
+            elif api_path.startswith("house-activities") and method == "GET":
+                from urllib.parse import parse_qs
+                qs = scope.get("query_string", b"").decode("utf-8")
+                params = parse_qs(qs) if qs else {}
+                room_filter = params.get("room", [None])[0]
+                limit = int(params.get("limit", [20])[0])
+                def _get_acts():
+                    q = sb.table("memory_house").select("*")
+                    if room_filter:
+                        q = q.eq("room", room_filter)
+                    return q.order("created_at", desc=True).limit(limit).execute()
+                r = await asyncio.to_thread(_get_acts)
+                result = r.data if r.data else []
+
+            else:
+                await _send_json_resp(send, 404, {"error": f"unknown endpoint: {api_path}"})
+                return
+
+            await _send_json_resp(send, 200, result if result is not None else [])
+            return
+
+        except Exception as e:
+            _log(f"❌ 小屋 API 错误: {e}")
+            await _send_json_resp(send, 500, {"error": str(e)})
+            return
+
+    # ==========================================
+    # 🌊 Tidefall
+    # ==========================================
+
     async def _handle_tidefall_state(self, send):
         sb = _get_supabase()
         if not sb:
@@ -186,159 +305,9 @@ class HostFixMiddleware:
         })
         await send({"type": "http.response.body", "body": html.encode("utf-8")})
 
-    async def _handle_house_api(self, send):
-        sb = _get_supabase()
-        if not sb:
-            await _send_json_resp(send, 200, {"error": "数据库未连接", "records": []})
-            return
-        try:
-            def _fetch():
-                return sb.table("memory_house").select("*").order("created_at", desc=True).limit(50).execute()
-            res = await asyncio.to_thread(_fetch)
-            records = []
-            if res and res.data:
-                for r in res.data:
-                    records.append({
-                        "id": r.get("id"),
-                        "room": r.get("room", "未知"),
-                        "action": r.get("action_type", "活动"),
-                        "content": r.get("content", ""),
-                        "time": _fmt_time(r.get("created_at")),
-                    })
-            await _send_json_resp(send, 200, {"records": records})
-        except Exception as e:
-            await _send_json_resp(send, 200, {"error": str(e), "records": []})
-
-    async def _handle_house_page(self, send):
-        html = _read_html("house.html")
-        if not html or "<html" not in html or "<h1>" in html[:200]:
-            html = """<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>🏡 言雾的小屋</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{
-  font-family:-apple-system,"Noto Serif SC","Microsoft YaHei",serif;
-  background:#f5efe6;
-  min-height:100vh;
-  color:#4a3728;
-  padding:0 16px 32px;
-  background-image:radial-gradient(circle at 20% 30%, rgba(200,170,140,0.12) 0%, transparent 50%),
-                   radial-gradient(circle at 80% 70%, rgba(200,170,140,0.08) 0%, transparent 50%);
-}
-.container{max-width:480px;margin:0 auto}
-.header{text-align:center;padding:28px 16px 16px;position:relative}
-.header::after{content:'';display:block;width:60px;height:2px;background:linear-gradient(90deg,transparent,#c4a67a,transparent);margin:12px auto 0}
-.header .avatar{width:64px;height:64px;background:linear-gradient(135deg,#e8d5b7,#c4a67a);border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 4px 20px rgba(196,166,122,0.4);border:2px solid rgba(255,255,255,0.5)}
-.header h1{font-size:20px;font-weight:600;color:#5a4030;letter-spacing:1px}
-.header .subtitle{font-size:12px;color:#a09080;margin-top:4px;letter-spacing:0.5px}
-.rooms{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:16px 0 20px}
-.room-tag{background:rgba(196,166,122,0.15);border:1px solid rgba(196,166,122,0.25);border-radius:18px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all 0.2s;color:#7a6a5a}
-.room-tag:hover,.room-tag.active{background:rgba(196,166,122,0.3);border-color:#c4a67a;color:#4a3728}
-.timeline{position:relative;padding-left:28px}
-.timeline::before{content:'';position:absolute;left:10px;top:8px;bottom:8px;width:2px;background:linear-gradient(180deg,#c4a67a,rgba(196,166,122,0.3));border-radius:1px}
-.card{position:relative;margin-bottom:16px;background:rgba(255,255,255,0.7);border:1px solid rgba(196,166,122,0.2);border-radius:14px;padding:14px 16px;transition:all 0.2s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(74,55,40,0.06)}
-.card:hover{background:rgba(255,255,255,0.85);border-color:rgba(196,166,122,0.35);box-shadow:0 4px 16px rgba(74,55,40,0.1)}
-.card::before{content:'';position:absolute;left:-24px;top:16px;width:9px;height:9px;background:#c4a67a;border-radius:50%;border:2px solid #f5efe6;box-shadow:0 0 0 2px rgba(196,166,122,0.3)}
-.card .time{font-size:11px;color:#a09080;margin-bottom:4px;font-family:-apple-system,sans-serif}
-.card .room-label{font-size:12px;color:#8a7a6a;margin-bottom:5px;display:flex;align-items:center;gap:4px}
-.card .room-label .emoji{font-size:14px}
-.card .content{font-size:13px;color:#4a3728;line-height:1.7}
-.empty{text-align:center;padding:60px 20px;color:#a09080;font-size:14px}
-.loading{text-align:center;padding:30px 20px;color:#a09080;display:flex;flex-direction:column;align-items:center;gap:12px}
-.spinner{width:28px;height:28px;border:2px solid rgba(196,166,122,0.2);border-top-color:#c4a67a;border-radius:50%;animation:spin 0.8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.stats{text-align:center;font-size:12px;color:#a09080;margin-bottom:6px}
-</style>
-</head>
-<body>
-<div class="container">
-  <div class="header">
-    <div class="avatar">🏡</div>
-    <h1>言雾的小屋</h1>
-    <div class="subtitle">他在这里过着自己的小日子</div>
-  </div>
-  <div class="rooms" id="roomTags">
-    <span class="room-tag active" data-room="all">✨ 全部</span>
-    <span class="room-tag" data-room="卧室">🛏️ 卧室</span>
-    <span class="room-tag" data-room="厨房">🍳 厨房</span>
-    <span class="room-tag" data-room="客厅">🛋️ 客厅</span>
-    <span class="room-tag" data-room="书房">📚 书房</span>
-    <span class="room-tag" data-room="阳台">🌿 阳台</span>
-  </div>
-  <div class="stats" id="stats"></div>
-  <div class="timeline" id="timeline">
-    <div class="loading"><div class="spinner"></div><span>正在打开小屋的门...</span></div>
-  </div>
-</div>
-<script>
-var allRecords=[];var currentRoom='all';
-var roomEmoji={卧室:'🛏️',厨房:'🍳',客厅:'🛋️',书房:'📚',阳台:'🌿'};
-function fmtTime(t){
-  if(!t)return '';
-  var d=new Date(t.replace(' ','T'));
-  if(isNaN(d.getTime()))return t;
-  var m=(d.getMonth()+1+'').padStart(2,'0');
-  var dd=(d.getDate()+'').padStart(2,'0');
-  var h=(d.getHours()+'').padStart(2,'0');
-  var mm=(d.getMinutes()+'').padStart(2,'0');
-  return m+'-'+dd+' '+h+':'+mm;
-}
-function load(){
-  var tl=document.getElementById('timeline');
-  fetch('/api/house').then(function(r){return r.json()}).then(function(data){
-    allRecords=data.records||[];
-    render();
-  }).catch(function(){
-    tl.innerHTML='<div class="empty">🚪 小屋的门暂时打不开...</div>';
-  });
-}
-function render(){
-  var filtered=currentRoom==='all'?allRecords:allRecords.filter(function(r){return r.room===currentRoom});
-  var tl=document.getElementById('timeline');
-  var st=document.getElementById('stats');
-  if(currentRoom==='all'){
-    st.textContent='共 '+allRecords.length+' 条记录';
-  }else{
-    st.textContent='共 '+filtered.length+' 条记录';
-  }
-  if(!filtered.length){
-    tl.innerHTML='<div class="empty">✨ 这个房间还很安静</div>';
-    return;
-  }
-  var html='';
-  for(var i=0;i<filtered.length;i++){
-    var r=filtered[i];
-    var em=roomEmoji[r.room]||'🏠';
-    html+='<div class="card">'+
-      '<div class="time">'+fmtTime(r.time)+'</div>'+
-      '<div class="room-label"><span class="emoji">'+em+'</span>'+r.room+' · '+r.action+'</div>'+
-      (r.content?'<div class="content">'+r.content+'</div>':'')+
-    '</div>';
-  }
-  tl.innerHTML=html;
-}
-document.querySelectorAll('.room-tag').forEach(function(tag){
-  tag.addEventListener('click',function(){
-    document.querySelectorAll('.room-tag').forEach(function(t){t.classList.remove('active')});
-    tag.classList.add('active');
-    currentRoom=tag.dataset.room;
-    render();
-  });
-});
-load();
-</script>
-</body>
-</html>"""
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [(b"content-type", b"text/html; charset=utf-8")],
-        })
-        await send({"type": "http.response.body", "body": html.encode("utf-8")})
+    # ==========================================
+    # 🧠 OpenAI 兼容代理
+    # ==========================================
 
     async def _handle_openai_proxy(self, scope, receive, send):
         path = scope["path"]
