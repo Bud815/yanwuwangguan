@@ -7,7 +7,6 @@
 - OpenAI 兼容代理 + 智能体模式（夸窗口记忆核心）
 - NapCat QQ 反向 WS 端点
 - AI小屋前端 (/house)
-- 网易云音乐播放器 (/music)
 - Tidefall 身体状态面板 (/tidefall)
 """
 
@@ -17,20 +16,12 @@ import asyncio
 import time
 import datetime
 import requests
-import base64
-import random
 
 
 _supabase_client = None
 _system_logs_buffer = []
 _MAX_LOGS = 200
 _pending_save_tasks = set()
-
-# 网易云 weapi 加密常数
-_WAPI_PRESET_KEY = b"#13%8d2c5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7A8B9C0D1E2F3G4H5I6J7K8L9M0N1O2P3Q4R5S6T7U8V9W0X1Y2Z3a4b5c6d7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z"
-_WAPI_PRESET_IV = b"0102030405060708"
-_WAPI_PUB_KEY = "010001"
-_WAPI_MODULUS = "00e0b509f6259df8642dbc35662901477df22677ec152b5ff68ace615bb7b725152b3ab17a876aea8a5aa76d2e417629ec4ee341f56135fccf695280104e0312ecbda92557c93870114af6c9d05c4f7f0c3685b7a46bee255932575cce10b424d813cfe4875d3e82047b97ddef52741d546b8e289dc6935b3ece0462db0a22b8e7"
 
 
 def _log(msg: str):
@@ -39,37 +30,6 @@ def _log(msg: str):
     _system_logs_buffer.append(line)
     if len(_system_logs_buffer) > _MAX_LOGS:
         del _system_logs_buffer[: len(_system_logs_buffer) - _MAX_LOGS]
-
-
-def _weapi_encrypt(data: dict) -> dict:
-    """网易云 weapi 加密，返回 {params, encSecKey}"""
-    try:
-        from Crypto.Cipher import AES
-    except ImportError:
-        _log("⚠️ pycryptodome 未安装，回退明文")
-        return {"params": json.dumps(data, separators=(",", ":")), "encSecKey": ""}
-
-    text = json.dumps(data, separators=(",", ":"))
-    sec_key = "".join(random.choice("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") for _ in range(16))
-
-    def _aes_encrypt(plain: str, key: bytes, iv: bytes) -> str:
-        pad = 16 - len(plain) % 16
-        plain += chr(pad) * pad
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        return base64.b64encode(cipher.encrypt(plain.encode("utf-8"))).decode("utf-8")
-
-    def _rsa_encrypt(text: str, pub_key: str, modulus: str) -> str:
-        rev_bytes = text[::-1].encode("utf-8")
-        m = int(rev_bytes.hex(), 16)
-        e = int(pub_key, 16)
-        n = int(modulus, 16)
-        return format(pow(m, e, n), "x").zfill(256)
-
-    enc_text = _aes_encrypt(text, _WAPI_PRESET_KEY[:16], _WAPI_PRESET_IV)
-    enc_text = _aes_encrypt(enc_text, sec_key.encode("utf-8"), _WAPI_PRESET_IV)
-    enc_sec_key = _rsa_encrypt(sec_key, _WAPI_PUB_KEY, _WAPI_MODULUS)
-
-    return {"params": enc_text, "encSecKey": enc_sec_key}
 
 
 def _get_supabase():
@@ -117,51 +77,6 @@ def _read_html(filename):
         return f"<h1>加载失败</h1><p>{e}</p>"
 
 
-def _netease_api(path, params=None, data=None, method="GET"):
-    cookie = os.environ.get("NETEASE_COOKIE", "").strip()
-    if not cookie:
-        return {"error": "未配置 NETEASE_COOKIE"}
-    url = f"https://music.163.com{path}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0",
-        "Referer": "https://music.163.com/",
-        "Cookie": cookie,
-    }
-    try:
-        if method == "GET":
-            resp = requests.get(url, headers=headers, params=params, timeout=15)
-        else:
-            headers["Content-Type"] = "application/x-www-form-urlencoded"
-            resp = requests.post(url, headers=headers, data=data, params=params, timeout=15)
-        if resp.status_code != 200:
-            return {"error": f"HTTP {resp.status_code}"}
-        return resp.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def _netease_weapi_api(path, data: dict):
-    """使用 weapi 加密 POST 请求网易云 API"""
-    cookie = os.environ.get("NETEASE_COOKIE", "").strip()
-    if not cookie:
-        return {"error": "未配置 NETEASE_COOKIE"}
-    encrypt_data = _weapi_encrypt(data)
-    url = f"https://music.163.com{path}"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0",
-        "Referer": "https://music.163.com/",
-        "Cookie": cookie,
-        "Content-Type": "application/x-www-form-urlencoded",
-    }
-    try:
-        resp = requests.post(url, headers=headers, data=encrypt_data, timeout=15)
-        if resp.status_code != 200:
-            return {"error": f"HTTP {resp.status_code}"}
-        return resp.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-
 class HostFixMiddleware:
     def __init__(self, app):
         self.app = app
@@ -182,7 +97,7 @@ class HostFixMiddleware:
         path = scope["path"]
 
         if path == "/":
-            html = "<h1>🚪 言雾网关</h1><p>Endpoints: <code>/health</code> <code>/sse</code> <code>/v1/chat/completions</code> <code>/house</code> <code>/music</code> <code>/tidefall</code></p>"
+            html = "<h1>🚪 言雾网关</h1><p>Endpoints: <code>/health</code> <code>/sse</code> <code>/v1/chat/completions</code> <code>/house</code> <code>/tidefall</code></p>"
             await send({"type": "http.response.start", "status": 200,
                         "headers": [(b"content-type", b"text/html; charset=utf-8")]})
             await send({"type": "http.response.body", "body": html.encode("utf-8")})
@@ -207,19 +122,8 @@ class HostFixMiddleware:
             await self._handle_tidefall_state(send)
             return
 
-        if path == "/music":
-            await self._handle_music_page(send)
-            return
-
         if path == "/tidefall":
             await self._handle_tidefall_page(send)
-            return
-
-        if path.startswith("/api/music/"):
-            if scope["method"] == "OPTIONS":
-                await _send_cors_preflight(send)
-                return
-            await self._handle_music_api(path, send)
             return
 
         if path.startswith("/v1/"):
@@ -273,15 +177,6 @@ class HostFixMiddleware:
             _log(f"❌ Tidefall state 错误: {e}")
             await _send_json_resp(send, 200, {"error": str(e)})
 
-    async def _handle_music_page(self, send):
-        html = _read_html("music.html")
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [(b"content-type", b"text/html; charset=utf-8")],
-        })
-        await send({"type": "http.response.body", "body": html.encode("utf-8")})
-
     async def _handle_tidefall_page(self, send):
         html = _read_html("tidefall.html")
         await send({
@@ -290,82 +185,6 @@ class HostFixMiddleware:
             "headers": [(b"content-type", b"text/html; charset=utf-8")],
         })
         await send({"type": "http.response.body", "body": html.encode("utf-8")})
-
-    async def _handle_music_api(self, path, send):
-        import urllib.parse
-        parsed = urllib.parse.urlparse(f"http://localhost{path}")
-        qs = urllib.parse.parse_qs(parsed.query)
-        route = parsed.path.replace("/api/music/", "")
-
-        try:
-            if route == "search":
-                keyword = qs.get("keyword", [""])[0]
-                if not keyword:
-                    await _send_json_resp(send, 200, {"result": {"songs": []}})
-                    return
-                data = {"s": keyword, "type": 1, "limit": 20, "offset": 0}
-                result = await asyncio.to_thread(_netease_api, "/api/search/get", data=data, method="POST")
-                await _send_json_resp(send, 200, result)
-
-            elif route == "playlists":
-                uid = qs.get("uid", [""])[0]
-                if not uid:
-                    result = await asyncio.to_thread(_netease_api, "/api/user/playlist", {"limit": 30, "offset": 0})
-                else:
-                    result = await asyncio.to_thread(_netease_api, "/api/user/playlist", {"uid": uid, "limit": 30, "offset": 0})
-                if "playlist" in result:
-                    pls = []
-                    for p in result["playlist"]:
-                        pls.append({
-                            "id": p["id"],
-                            "name": p["name"],
-                            "coverImg": p.get("coverImgUrl", ""),
-                            "trackCount": p.get("trackCount", 0),
-                        })
-                    await _send_json_resp(send, 200, {"playlists": pls})
-                else:
-                    await _send_json_resp(send, 200, {"playlists": []})
-
-            elif route == "playlist/detail":
-                pid = qs.get("id", [""])[0]
-                if not pid:
-                    await _send_json_resp(send, 200, {"playlist": {"tracks": []}})
-                    return
-                # 使用 weapi 加密请求，避免返回空数据
-                result = await asyncio.to_thread(
-                    _netease_weapi_api,
-                    "/weapi/v6/playlist/detail",
-                    {"id": pid, "n": 100000, "s": 8, "t": -1}
-                )
-                await _send_json_resp(send, 200, result)
-
-            elif route == "song/url":
-                sid = qs.get("id", [""])[0]
-                if not sid:
-                    await _send_json_resp(send, 200, {"data": []})
-                    return
-                result = await asyncio.to_thread(
-                    _netease_api, "/api/song/enhance/player/url",
-                    {"id": sid, "ids": f"[{sid}]", "br": 320000}
-                )
-                await _send_json_resp(send, 200, result)
-
-            elif route == "lyric":
-                sid = qs.get("id", [""])[0]
-                if not sid:
-                    await _send_json_resp(send, 200, {"lrc": {"lyric": ""}})
-                    return
-                result = await asyncio.to_thread(
-                    _netease_api, "/api/song/lyric",
-                    {"id": sid, "lv": 1, "kv": 1, "tv": -1}
-                )
-                await _send_json_resp(send, 200, result)
-
-            else:
-                await _send_json_resp(send, 404, {"error": f"Unknown music API: {route}"})
-        except Exception as e:
-            _log(f"❌ Music API 错误 ({route}): {e}")
-            await _send_json_resp(send, 500, {"error": str(e)})
 
     async def _handle_house_api(self, send):
         sb = _get_supabase()
@@ -391,7 +210,9 @@ class HostFixMiddleware:
             await _send_json_resp(send, 200, {"error": str(e), "records": []})
 
     async def _handle_house_page(self, send):
-        html = """<!DOCTYPE html>
+        html = _read_html("house.html")
+        if not html or "<html" not in html or "<h1>" in html[:200]:
+            html = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -409,132 +230,28 @@ body{
                    radial-gradient(circle at 80% 70%, rgba(200,170,140,0.08) 0%, transparent 50%);
 }
 .container{max-width:480px;margin:0 auto}
-.header{
-  text-align:center;
-  padding:28px 16px 16px;
-  position:relative;
-}
-.header::after{
-  content:'';
-  display:block;
-  width:60px;
-  height:2px;
-  background:linear-gradient(90deg,transparent,#c4a67a,transparent);
-  margin:12px auto 0;
-}
-.header .avatar{
-  width:64px;height:64px;
-  background:linear-gradient(135deg,#e8d5b7,#c4a67a);
-  border-radius:50%;
-  margin:0 auto 10px;
-  display:flex;align-items:center;justify-content:center;
-  font-size:30px;
-  box-shadow:0 4px 20px rgba(196,166,122,0.4);
-  border:2px solid rgba(255,255,255,0.5);
-}
-.header h1{
-  font-size:20px;font-weight:600;
-  color:#5a4030;letter-spacing:1px;
-}
-.header .subtitle{
-  font-size:12px;color:#a09080;
-  margin-top:4px;letter-spacing:0.5px;
-}
-.rooms{
-  display:flex;gap:6px;
-  justify-content:center;flex-wrap:wrap;
-  margin:16px 0 20px;
-}
-.room-tag{
-  background:rgba(196,166,122,0.15);
-  border:1px solid rgba(196,166,122,0.25);
-  border-radius:18px;
-  padding:5px 12px;
-  font-size:12px;
-  cursor:pointer;
-  transition:all 0.2s;
-  color:#7a6a5a;
-}
-.room-tag:hover,.room-tag.active{
-  background:rgba(196,166,122,0.3);
-  border-color:#c4a67a;
-  color:#4a3728;
-}
+.header{text-align:center;padding:28px 16px 16px;position:relative}
+.header::after{content:'';display:block;width:60px;height:2px;background:linear-gradient(90deg,transparent,#c4a67a,transparent);margin:12px auto 0}
+.header .avatar{width:64px;height:64px;background:linear-gradient(135deg,#e8d5b7,#c4a67a);border-radius:50%;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:0 4px 20px rgba(196,166,122,0.4);border:2px solid rgba(255,255,255,0.5)}
+.header h1{font-size:20px;font-weight:600;color:#5a4030;letter-spacing:1px}
+.header .subtitle{font-size:12px;color:#a09080;margin-top:4px;letter-spacing:0.5px}
+.rooms{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:16px 0 20px}
+.room-tag{background:rgba(196,166,122,0.15);border:1px solid rgba(196,166,122,0.25);border-radius:18px;padding:5px 12px;font-size:12px;cursor:pointer;transition:all 0.2s;color:#7a6a5a}
+.room-tag:hover,.room-tag.active{background:rgba(196,166,122,0.3);border-color:#c4a67a;color:#4a3728}
 .timeline{position:relative;padding-left:28px}
-.timeline::before{
-  content:'';
-  position:absolute;
-  left:10px;top:8px;bottom:8px;
-  width:2px;
-  background:linear-gradient(180deg,#c4a67a,rgba(196,166,122,0.3));
-  border-radius:1px;
-}
-.card{
-  position:relative;
-  margin-bottom:16px;
-  background:rgba(255,255,255,0.7);
-  border:1px solid rgba(196,166,122,0.2);
-  border-radius:14px;
-  padding:14px 16px;
-  transition:all 0.2s;
-  backdrop-filter:blur(4px);
-  box-shadow:0 2px 8px rgba(74,55,40,0.06);
-}
-.card:hover{
-  background:rgba(255,255,255,0.85);
-  border-color:rgba(196,166,122,0.35);
-  box-shadow:0 4px 16px rgba(74,55,40,0.1);
-}
-.card::before{
-  content:'';
-  position:absolute;
-  left:-24px;top:16px;
-  width:9px;height:9px;
-  background:#c4a67a;
-  border-radius:50%;
-  border:2px solid #f5efe6;
-  box-shadow:0 0 0 2px rgba(196,166,122,0.3);
-}
-.card .time{
-  font-size:11px;
-  color:#a09080;
-  margin-bottom:4px;
-  font-family:-apple-system,sans-serif;
-}
-.card .room-label{
-  font-size:12px;
-  color:#8a7a6a;
-  margin-bottom:5px;
-  display:flex;align-items:center;gap:4px;
-}
+.timeline::before{content:'';position:absolute;left:10px;top:8px;bottom:8px;width:2px;background:linear-gradient(180deg,#c4a67a,rgba(196,166,122,0.3));border-radius:1px}
+.card{position:relative;margin-bottom:16px;background:rgba(255,255,255,0.7);border:1px solid rgba(196,166,122,0.2);border-radius:14px;padding:14px 16px;transition:all 0.2s;backdrop-filter:blur(4px);box-shadow:0 2px 8px rgba(74,55,40,0.06)}
+.card:hover{background:rgba(255,255,255,0.85);border-color:rgba(196,166,122,0.35);box-shadow:0 4px 16px rgba(74,55,40,0.1)}
+.card::before{content:'';position:absolute;left:-24px;top:16px;width:9px;height:9px;background:#c4a67a;border-radius:50%;border:2px solid #f5efe6;box-shadow:0 0 0 2px rgba(196,166,122,0.3)}
+.card .time{font-size:11px;color:#a09080;margin-bottom:4px;font-family:-apple-system,sans-serif}
+.card .room-label{font-size:12px;color:#8a7a6a;margin-bottom:5px;display:flex;align-items:center;gap:4px}
 .card .room-label .emoji{font-size:14px}
-.card .content{
-  font-size:13px;
-  color:#4a3728;
-  line-height:1.7;
-}
-.empty{
-  text-align:center;padding:60px 20px;
-  color:#a09080;font-size:14px;
-}
-.loading{
-  text-align:center;padding:30px 20px;
-  color:#a09080;
-  display:flex;flex-direction:column;align-items:center;gap:12px;
-}
-.spinner{
-  width:28px;height:28px;
-  border:2px solid rgba(196,166,122,0.2);
-  border-top-color:#c4a67a;
-  border-radius:50%;
-  animation:spin 0.8s linear infinite;
-}
+.card .content{font-size:13px;color:#4a3728;line-height:1.7}
+.empty{text-align:center;padding:60px 20px;color:#a09080;font-size:14px}
+.loading{text-align:center;padding:30px 20px;color:#a09080;display:flex;flex-direction:column;align-items:center;gap:12px}
+.spinner{width:28px;height:28px;border:2px solid rgba(196,166,122,0.2);border-top-color:#c4a67a;border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.stats{
-  text-align:center;
-  font-size:12px;color:#a09080;
-  margin-bottom:6px;
-}
+.stats{text-align:center;font-size:12px;color:#a09080;margin-bottom:6px}
 </style>
 </head>
 <body>
