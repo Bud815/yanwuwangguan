@@ -139,11 +139,11 @@ class HostFixMiddleware:
             await self._handle_house_api(send)
             return
 
-        if path == "/api/tidefall/config":
+        if path == "/api/tidefall/state":
             if scope["method"] == "OPTIONS":
                 await _send_cors_preflight(send)
                 return
-            await self._handle_tidefall_config(send)
+            await self._handle_tidefall_state(send)
             return
 
         if path == "/music":
@@ -185,24 +185,32 @@ class HostFixMiddleware:
         scope["headers"] = list(headers.items())
         await self.app(scope, receive, send)
 
-    async def _handle_tidefall_config(self, send):
+    async def _handle_tidefall_state(self, send):
         sb = _get_supabase()
-        aid = "0950e2dc-9bd5-4801-afa3-aa887aa36b4e"
-        if sb:
-            try:
-                def _q():
-                    r = sb.table("eventide_body_state").select("assistant_id").limit(1).execute()
-                    return r.data[0]["assistant_id"] if r and r.data else None
-                res = await asyncio.to_thread(_q)
-                if res:
-                    aid = res
-            except Exception:
-                pass
-        await _send_json_resp(send, 200, {
-            "supabaseUrl": "https://zqwlsrfayevpmkwvxjqd.supabase.co",
-            "supabaseKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpxd2xzcmZheWV2cG1rd3Z4anFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzOTY2OTIsImV4cCI6MjA5Nzk3MjY5Mn0.XQnBSMjrcpiNh5YUWE2HM9Rs33gXIB_WjbGxSjrBqdc",
-            "assistantId": aid,
-        })
+        if not sb:
+            await _send_json_resp(send, 200, {"error": "数据库未连接"})
+            return
+        try:
+            def _fetch_state():
+                r = sb.table("eventide_body_state").select("*").limit(1).execute()
+                return r.data[0] if r and r.data else None
+            def _fetch_snapshots():
+                r = sb.table("eventide_snapshots").select("ts,heat,pressure,possessiveness").order("ts", desc=True).limit(96).execute()
+                return r.data if r and r.data else []
+            def _fetch_events():
+                r = sb.table("eventide_event_log").select("event_key,started_at,ended_at").order("ended_at", desc=True).limit(8).execute()
+                return r.data if r and r.data else []
+            state = await asyncio.to_thread(_fetch_state)
+            snapshots = await asyncio.to_thread(_fetch_snapshots)
+            eventLog = await asyncio.to_thread(_fetch_events)
+            await _send_json_resp(send, 200, {
+                "state": state,
+                "snapshots": snapshots,
+                "eventLog": eventLog,
+            })
+        except Exception as e:
+            _log(f"❌ Tidefall state 错误: {e}")
+            await _send_json_resp(send, 200, {"error": str(e)})
 
     async def _handle_music_page(self, send):
         html = _read_html("music.html")
@@ -518,8 +526,7 @@ function render(){
     tl.innerHTML='<div class="empty">✨ 这个房间还很安静</div>';
     return;
   }
-  var html='';
-  for(var i=0;i<filtered.length;i++){
+  var html='';\n  for(var i=0;i<filtered.length;i++){
     var r=filtered[i];
     var em=roomEmoji[r.room]||'🏠';
     html+='<div class="card">'+
