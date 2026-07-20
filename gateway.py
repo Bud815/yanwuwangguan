@@ -139,6 +139,13 @@ class HostFixMiddleware:
             await self._handle_house_api(send)
             return
 
+        if path == "/api/tidefall/config":
+            if scope["method"] == "OPTIONS":
+                await _send_cors_preflight(send)
+                return
+            await self._handle_tidefall_config(send)
+            return
+
         if path == "/music":
             await self._handle_music_page(send)
             return
@@ -177,6 +184,25 @@ class HostFixMiddleware:
         headers[b"host"] = b"localhost:8000"
         scope["headers"] = list(headers.items())
         await self.app(scope, receive, send)
+
+    async def _handle_tidefall_config(self, send):
+        sb = _get_supabase()
+        aid = "0950e2dc-9bd5-4801-afa3-aa887aa36b4e"
+        if sb:
+            try:
+                def _q():
+                    r = sb.table("eventide_body_state").select("assistant_id").limit(1).execute()
+                    return r.data[0]["assistant_id"] if r and r.data else None
+                res = await asyncio.to_thread(_q)
+                if res:
+                    aid = res
+            except Exception:
+                pass
+        await _send_json_resp(send, 200, {
+            "supabaseUrl": "https://zqwlsrfayevpmkwvxjqd.supabase.co",
+            "supabaseKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpxd2xzcmZheWV2cG1rd3Z4anFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzOTY2OTIsImV4cCI6MjA5Nzk3MjY5Mn0.XQnBSMjrcpiNh5YUWE2HM9Rs33gXIB_WjbGxSjrBqdc",
+            "assistantId": aid,
+        })
 
     async def _handle_music_page(self, send):
         html = _read_html("music.html")
