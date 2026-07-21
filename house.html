@@ -395,8 +395,9 @@ function switchRoom(room) {
 async function get(path) {
   try {
     const r = await fetch(API + path);
+    if (!r.ok) return null;
     return await r.json();
-  } catch(e) { return []; }
+  } catch(e) { return null; }
 }
 async function post(path, data) {
   try {
