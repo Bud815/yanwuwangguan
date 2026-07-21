@@ -200,6 +200,26 @@ class HostFixMiddleware:
                     return r.data[0] if r.data else None
                 result = await asyncio.to_thread(_get_cat)
 
+            # ---- POST /house/api/cat/feed ----
+            elif api_path == "cat/feed" and method == "POST":
+                data = json.loads(body.decode("utf-8")) if body else {}
+                amount = int(data.get("amount", 30))
+                new_fullness = min(100, max(0, amount))
+                now_str = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                def _feed_cat():
+                    sb.table("cat_state").update({
+                        "fullness": new_fullness,
+                        "updated_at": now_str
+                    }).eq("id", 1).execute()
+                    sb.table("memory_house").insert({
+                        "room": "客厅",
+                        "activity": "喂蛋黄",
+                        "content": f"给蛋黄添了猫粮和水，饱腹度+{amount}，现在{new_fullness}%",
+                        "created_at": now_str
+                    }).execute()
+                await asyncio.to_thread(_feed_cat)
+                result = {"ok": True, "fullness": new_fullness}
+
             # ---- GET /house/api/members ----
             elif api_path == "members" and method == "GET":
                 def _get_members():
