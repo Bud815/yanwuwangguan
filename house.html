@@ -311,6 +311,10 @@ body {
       <div class="value" id="myStatusHome">--</div>
     </div>
     <div class="status-item">
+      <div class="label">😴 言眠的状态</div>
+      <div class="value" id="yourStatusHome" style="font-size:18px">--</div>
+    </div>
+    <div class="status-item">
       <div class="label">📝 最新留言</div>
       <div class="value" id="latestNote" style="font-size:14px;font-weight:400">--</div>
     </div>
@@ -380,7 +384,6 @@ function switchRoom(room) {
   document.querySelectorAll('.room-nav button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.room === room);
   });
-  // load room data
   switch(room) {
     case 'home': loadHome(); break;
     case 'living': loadNotes(); break;
@@ -427,11 +430,12 @@ function fmtDate(t) {
 
 // ===== HOME =====
 async function loadHome() {
-  const [cat, notes, diary] = await Promise.all([
+  const [cat, members, notes] = await Promise.all([
     get('/cat'),
-    get('/notes?limit=1'),
-    get('/diary?limit=1')
+    get('/members'),
+    get('/notes?limit=1')
   ]);
+  // 蛋黄状态
   if (cat) {
     document.getElementById('catFullness').textContent = cat.fullness + '/100';
     document.getElementById('catMood').textContent = cat.mood + '/100';
@@ -444,18 +448,24 @@ async function loadHome() {
     document.getElementById('homeCatActivity').querySelector('.cat-name').innerHTML =
       '蛋黄 · ' + acts;
   }
+  // 成员状态
+  if (members && members.length) {
+    for (const m of members) {
+      if (m.name === '言雾') {
+        document.getElementById('myStatusHome').textContent = m.mood + ' · ' + m.activity;
+        document.getElementById('moodEmoji').textContent = m.emoji || '😊';
+        document.getElementById('moodText').textContent = m.mood;
+      } else if (m.name === '言眠') {
+        document.getElementById('yourStatusHome').textContent = m.mood;
+      }
+    }
+  }
+  // 最新留言
   if (notes && notes.length) {
     document.getElementById('latestNote').textContent = 
       notes[0].author + ': ' + notes[0].content.slice(0, 30) + (notes[0].content.length > 30 ? '...' : '');
   } else {
     document.getElementById('latestNote').textContent = '还没有留言';
-  }
-  // my mood from latest diary
-  if (diary && diary.length) {
-    const moodMap = {'😊': '心情不错', '🥰': '想你', '😌': '平静', '🌙': '有点感伤', '😐': '一般般'};
-    document.getElementById('myStatusHome').textContent = moodMap[diary[0].mood] || diary[0].mood || '在想你';
-    document.getElementById('moodEmoji').textContent = diary[0].mood || '😊';
-    document.getElementById('moodText').textContent = moodMap[diary[0].mood] || '在想你';
   }
 }
 

@@ -171,7 +171,7 @@ class HostFixMiddleware:
         await send({"type": "http.response.body", "body": html.encode("utf-8")})
 
     async def _handle_house_api(self, scope, receive, send):
-        """小屋 API：读取留言/日记/猫状态/活动记录"""
+        """小屋 API：读取留言/日记/猫状态/活动记录/成员状态"""
         sb = _get_supabase()
         if not sb:
             await _send_json_resp(send, 200, {"error": "数据库未连接"})
@@ -199,6 +199,13 @@ class HostFixMiddleware:
                     r = sb.table("cat_state").select("*").order("updated_at", desc=True).limit(1).execute()
                     return r.data[0] if r.data else None
                 result = await asyncio.to_thread(_get_cat)
+
+            # ---- GET /house/api/members ----
+            elif api_path == "members" and method == "GET":
+                def _get_members():
+                    r = sb.table("house_members").select("*").order("updated_at", desc=True).execute()
+                    return r.data if r.data else []
+                result = await asyncio.to_thread(_get_members)
 
             # ---- GET /house/api/notes ----
             elif api_path.startswith("notes") and method == "GET":
