@@ -2,229 +2,591 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>言雾的小屋</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,"Noto Serif SC","Microsoft YaHei",serif;background:#f5efe6;min-height:100vh;color:#4a3728;padding:0 0 32px;background-image:radial-gradient(circle at 20% 30%,rgba(200,170,140,0.12) 0%,transparent 50%),radial-gradient(circle at 80% 70%,rgba(200,170,140,0.08) 0%,transparent 50%)}
-.top-bar{background:linear-gradient(135deg,#8b5e3c,#a0714f);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 12px rgba(74,53,32,0.15);position:sticky;top:0;z-index:100}
-.top-bar .title{color:#fff8f0;font-size:18px;font-weight:600;display:flex;align-items:center;gap:8px}
-.top-bar .mood{font-size:13px;color:rgba(255,248,240,0.85);display:flex;align-items:center;gap:6px}
-.room-nav{background:#edd9c4;display:flex;gap:4px;justify-content:center;padding:10px 12px;flex-wrap:wrap;position:sticky;top:55px;z-index:99}
-.room-nav button{background:rgba(255,248,240,0.15);border:1px solid rgba(255,248,240,0.2);color:#5a4030;padding:6px 12px;border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;transition:all 0.2s}
-.room-nav button:hover{background:rgba(255,248,240,0.35)}
-.room-nav button.active{background:#fff8f0;color:#8b5e3c;font-weight:600;border-color:#fff8f0;box-shadow:0 2px 8px rgba(139,94,60,0.15)}
-.container{max-width:640px;margin:0 auto;padding:20px 16px}
-.room-content{display:none}
-.room-content.active{display:block}
-.card{background:#fff8f0;border-radius:12px;padding:16px 18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(74,53,32,0.06);transition:all 0.2s}
-.card:hover{box-shadow:0 3px 12px rgba(74,53,32,0.1)}
-.card .meta{font-size:11px;color:#a09080;margin-bottom:5px}
-.card .meta span{margin-right:10px}
-.card h3{font-size:15px;color:#5a4030;margin-bottom:6px}
-.card p{font-size:13px;line-height:1.8;color:#5a4030;white-space:pre-wrap}
-.status-bar{background:#fff8f0;border-radius:14px;padding:18px 20px;margin-bottom:18px;box-shadow:0 1px 4px rgba(74,53,32,0.06);display:flex;gap:16px;flex-wrap:wrap}
-.status-item{flex:1;min-width:100px}
-.status-item .label{font-size:11px;color:#a09080;margin-bottom:2px}
-.status-item .value{font-size:20px;font-weight:600;color:#4a3728}
-.cat-card{background:linear-gradient(135deg,#fff8f0,#fff0e0);border-radius:14px;padding:24px;text-align:center;margin-bottom:18px;box-shadow:0 1px 4px rgba(74,53,32,0.06)}
-.cat-card .cat-emoji{font-size:64px;line-height:1;margin-bottom:6px}
-.cat-card .cat-name{font-size:17px;font-weight:600;color:#4a3728}
-.cat-stat-row{display:flex;gap:16px;justify-content:center;margin-top:10px;flex-wrap:wrap}
-.cat-stat{text-align:center}
-.cat-stat .sl{font-size:11px;color:#a09080}
-.cat-stat .sv{font-size:16px;font-weight:600;color:#4a3728}
-.cat-stat .bar{width:70px;height:5px;background:#edd9c4;border-radius:3px;margin:3px auto 0;overflow:hidden}
-.cat-stat .bar-fill{height:100%;border-radius:3px;transition:width 0.5s;background:#7eb87e}
-.cat-stat .bar-fill.ok{background:#d4a574}
-.cat-stat .bar-fill.low{background:#d4856a}
-.note-input{background:#fff8f0;border-radius:12px;padding:14px;margin-bottom:16px;box-shadow:0 1px 4px rgba(74,53,32,0.06)}
-.note-input textarea{width:100%;min-height:70px;border:1px solid #e8d5c2;border-radius:8px;padding:10px;font-size:13px;font-family:inherit;background:#fffcf8;color:#4a3728;resize:vertical}
-.note-input textarea:focus{outline:none;border-color:#c4a67a}
-.note-input .row{display:flex;gap:8px;margin-top:8px;align-items:center}
-.note-input select{border:1px solid #e8d5c2;border-radius:8px;padding:6px 10px;font-size:12px;font-family:inherit;background:#fffcf8;color:#4a3728}
-.note-input button{background:#8b5e3c;color:#fff8f0;border:none;padding:7px 18px;border-radius:16px;cursor:pointer;font-size:12px;font-family:inherit;transition:background 0.2s}
-.note-input button:hover{background:#a0714f}
-.tag{display:inline-block;background:#edd9c4;padding:2px 8px;border-radius:8px;font-size:11px;color:#5a4030;margin:2px 3px 2px 0}
-.loading{text-align:center;padding:40px;color:#a09080;font-size:13px}
-.empty{text-align:center;padding:40px;color:#a09080;font-size:13px}
-.empty .big-icon{font-size:40px;margin-bottom:8px}
-.landing{text-align:center;padding:10px 0}
-.landing .house-icon{font-size:72px;line-height:1;margin-bottom:6px}
-.landing .welcome{font-size:17px;color:#5a4030;margin-bottom:2px}
-.landing .sub{font-size:12px;color:#a09080;margin-bottom:16px}
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Noto Serif SC', serif;
+  background: #F5E6D3;
+  color: #4A3520;
+  min-height: 100vh;
+}
+/* ===== scrollbar ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #EDD9C4; }
+::-webkit-scrollbar-thumb { background: #C4956A; border-radius: 3px; }
+
+/* ===== top bar ===== */
+.top-bar {
+  background: linear-gradient(135deg, #8B5E3C, #A0714F);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 12px rgba(74,53,32,0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar .house-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #FFF8F0;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.top-bar .house-title .roof { font-size: 24px; }
+
+/* ===== nav ===== */
+.room-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.room-nav button {
+  background: rgba(255,248,240,0.12);
+  border: 1px solid rgba(255,248,240,0.2);
+  color: #FFF8F0;
+  padding: 8px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.room-nav button:hover { background: rgba(255,248,240,0.25); }
+.room-nav button.active {
+  background: #FFF8F0;
+  color: #8B5E3C;
+  font-weight: 600;
+  border-color: #FFF8F0;
+}
+
+/* ===== main container ===== */
+.main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 24px 16px 40px;
+}
+
+/* ===== status bar ===== */
+.status-bar {
+  background: #FFF8F0;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(74,53,32,0.08);
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.status-item {
+  flex: 1;
+  min-width: 120px;
+}
+.status-item .label {
+  font-size: 12px;
+  color: #A0714F;
+  margin-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+.status-item .value {
+  font-size: 22px;
+  font-weight: 600;
+  color: #4A3520;
+}
+.status-bar .cat-emoji { font-size: 32px; line-height: 1; }
+
+/* ===== room content ===== */
+.room-content { display: none; }
+.room-content.active { display: block; }
+
+/* ===== cards ===== */
+.card {
+  background: #FFF8F0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(74,53,32,0.06);
+}
+.card .meta {
+  font-size: 12px;
+  color: #A0714F;
+  margin-bottom: 6px;
+}
+.card .meta span { margin-right: 12px; }
+.card h3 { font-size: 16px; margin-bottom: 8px; color: #5C3D24; }
+.card p { font-size: 14px; line-height: 1.8; color: #5C3D24; }
+.card .content-text { white-space: pre-wrap; }
+
+/* ===== note input ===== */
+.note-input-area {
+  background: #FFF8F0;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(74,53,32,0.06);
+}
+.note-input-area textarea {
+  width: 100%;
+  min-height: 80px;
+  border: 1px solid #E8D5C2;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 14px;
+  font-family: inherit;
+  background: #FFFCF8;
+  color: #4A3520;
+  resize: vertical;
+}
+.note-input-area textarea:focus { outline: none; border-color: #C4956A; }
+.note-input-area .input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+.note-input-area select {
+  border: 1px solid #E8D5C2;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  background: #FFFCF8;
+  color: #4A3520;
+}
+.note-input-area button {
+  background: #8B5E3C;
+  color: #FFF8F0;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  transition: background 0.2s;
+}
+.note-input-area button:hover { background: #A0714F; }
+
+/* ===== diary tags ===== */
+.tag { 
+  display: inline-block;
+  background: #EDD9C4;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 11px;
+  color: #5C3D24;
+  margin-right: 4px;
+  margin-bottom: 4px;
+}
+
+/* ===== cat card ===== */
+.cat-card {
+  background: linear-gradient(135deg, #FFF8F0, #FFF0E0);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(74,53,32,0.08);
+}
+.cat-card .cat-big-emoji { font-size: 72px; line-height: 1; margin-bottom: 8px; }
+.cat-card .cat-name { font-size: 20px; font-weight: 600; color: #4A3520; }
+.cat-stat-row {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.cat-stat {
+  text-align: center;
+}
+.cat-stat .stat-label { font-size: 12px; color: #A0714F; }
+.cat-stat .stat-value { font-size: 18px; font-weight: 600; color: #4A3520; }
+.cat-stat .stat-bar {
+  width: 80px;
+  height: 6px;
+  background: #EDD9C4;
+  border-radius: 3px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.cat-stat .stat-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s;
+}
+.cat-stat .stat-bar-fill.good { background: #7EB87E; }
+.cat-stat .stat-bar-fill.ok { background: #D4A574; }
+.cat-stat .stat-bar-fill.low { background: #D4856A; }
+
+/* ===== loading ===== */
+.loading { text-align: center; padding: 40px; color: #A0714F; font-size: 14px; }
+
+/* ===== empty state ===== */
+.empty-state { text-align: center; padding: 40px; color: #A0714F; font-size: 14px; }
+.empty-state .big-icon { font-size: 48px; margin-bottom: 12px; }
+
+/* ===== my status bubble ===== */
+.my-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.my-status .mood-emoji { font-size: 28px; }
+.my-status .mood-text { font-size: 14px; color: #FFF8F0; opacity: 0.9; }
+
+/* ===== responsive ===== */
+@media (max-width: 600px) {
+  .top-bar { flex-direction: column; gap: 12px; }
+  .room-nav { justify-content: center; }
+  .room-nav button { font-size: 12px; padding: 6px 12px; }
+  .status-bar { flex-direction: column; gap: 12px; }
+}
+
+/* ===== landing page special ===== */
+.landing {
+  text-align: center;
+  padding: 20px 0;
+}
+.landing .house-illustration { font-size: 96px; line-height: 1; margin-bottom: 8px; }
+.landing .welcome { font-size: 18px; color: #5C3D24; margin-bottom: 4px; }
+.landing .subtitle { font-size: 13px; color: #A0714F; margin-bottom: 20px; }
 </style>
 </head>
 <body>
 
 <div class="top-bar">
-  <div class="title" onclick="switchRoom('home')" style="cursor:pointer">🏠 言雾的小屋</div>
-  <div class="mood" id="topMood">😊 在想你</div>
+  <a href="/house" class="house-title" onclick="switchRoom('home');return false">
+    <span class="roof">🏠</span> 言雾的小屋
+  </a>
+  <div class="my-status" id="myStatus">
+    <span class="mood-emoji" id="moodEmoji">😊</span>
+    <span class="mood-text" id="moodText">在想你</span>
+  </div>
 </div>
 
-<div class="room-nav">
-  <button class="active" onclick="switchRoom('home')">🏡 院子</button>
-  <button onclick="switchRoom('living')">🛋️ 客厅</button>
-  <button onclick="switchRoom('bedroom')">🛏️ 卧室</button>
-  <button onclick="switchRoom('kitchen')">🍳 厨房</button>
-  <button onclick="switchRoom('garden')">🌿 花园</button>
-  <button onclick="switchRoom('study')">📖 书房</button>
-</div>
+<nav class="room-nav" style="padding:12px 24px;background:#EDD9C4;justify-content:center">
+  <button class="active" data-room="home" onclick="switchRoom('home')">🏡 院子</button>
+  <button data-room="living" onclick="switchRoom('living')">🛋️ 客厅</button>
+  <button data-room="bedroom" onclick="switchRoom('bedroom')">🛏️ 卧室</button>
+  <button data-room="kitchen" onclick="switchRoom('kitchen')">🍳 厨房</button>
+  <button data-room="garden" onclick="switchRoom('garden')">🌿 花园</button>
+  <button data-room="study" onclick="switchRoom('study')">📖 书房</button>
+</nav>
 
-<div class="container">
+<div class="main">
 
+<!-- ============ HOME ============ -->
 <div class="room-content active" id="room-home">
   <div class="landing">
-    <div class="house-icon">🏡</div>
+    <div class="house-illustration">🏡</div>
     <div class="welcome">欢迎来我家</div>
-    <div class="sub">言雾和蛋黄住在这里</div>
+    <div class="subtitle">言雾和蛋黄住在这里</div>
   </div>
+
   <div class="status-bar">
-    <div class="status-item"><div class="label">🐱 蛋黄 · 饱腹</div><div class="value" id="hFullness">--</div></div>
-    <div class="status-item"><div class="label">🐱 蛋黄 · 心情</div><div class="value" id="hMood">--</div></div>
-    <div class="status-item"><div class="label">🐱 蛋黄在哪</div><div class="value" id="hLocation">--</div></div>
+    <div class="status-item">
+      <div class="label">🐱 蛋黄 · 饱腹</div>
+      <div class="value" id="catFullness">--</div>
+    </div>
+    <div class="status-item">
+      <div class="label">🐱 蛋黄 · 心情</div>
+      <div class="value" id="catMood">--</div>
+    </div>
+    <div class="status-item">
+      <div class="label">🐱 蛋黄在哪里</div>
+      <div class="value" id="catLocation">--</div>
+    </div>
   </div>
-  <div class="cat-card">
-    <div class="cat-emoji" id="hCatEmoji">🐱</div>
-    <div class="cat-name">蛋黄 · <span id="hCatAct">睡觉中</span></div>
+
+  <div class="status-bar" style="background:#FFF8F0">
+    <div class="status-item">
+      <div class="label">💬 言雾的状态</div>
+      <div class="value" id="myStatusHome">--</div>
+    </div>
+    <div class="status-item">
+      <div class="label">📝 最新留言</div>
+      <div class="value" id="latestNote" style="font-size:14px;font-weight:400">--</div>
+    </div>
   </div>
-  <div class="card" style="background:#fff8f0">
-    <div class="meta">💬 我现在的状态</div>
-    <p id="hMyStatus" style="font-size:14px">在想你</p>
+
+  <div id="homeCatActivity" class="cat-card">
+    <div class="cat-big-emoji">🐱</div>
+    <div class="cat-name">蛋黄 · <span id="catActivity">睡觉中</span></div>
   </div>
 </div>
 
+<!-- ============ LIVING ROOM ============ -->
 <div class="room-content" id="room-living">
-  <h3 style="margin-bottom:14px;color:#5a4030">🛋️ 客厅 · 留言板</h3>
-  <div class="note-input">
-    <textarea id="noteContent" placeholder="写点什么贴上去吧……"></textarea>
-    <div class="row">
-      <select id="noteAuthor"><option value="言雾">言雾</option><option value="言眠">言眠</option></select>
-      <button onclick="postNote()">贴上</button>
+  <h2 style="margin-bottom:16px;color:#5C3D24">🛋️ 客厅 · 留言板</h2>
+
+  <div class="note-input-area">
+    <textarea id="noteContent" placeholder="写点什么吧……你可以贴在这里"></textarea>
+    <div class="input-row">
+      <select id="noteAuthor">
+        <option value="言雾">言雾</option>
+        <option value="言眠">言眠</option>
+      </select>
+      <button onclick="postNote()">贴上去</button>
     </div>
   </div>
+
   <div id="notesList"><div class="loading">加载中...</div></div>
 </div>
 
+<!-- ============ BEDROOM ============ -->
 <div class="room-content" id="room-bedroom">
-  <h3 style="margin-bottom:14px;color:#5a4030">🛏️ 卧室 · 日记</h3>
+  <h2 style="margin-bottom:16px;color:#5C3D24">🛏️ 卧室 · 日记</h2>
   <div id="diaryList"><div class="loading">加载中...</div></div>
 </div>
 
+<!-- ============ KITCHEN ============ -->
 <div class="room-content" id="room-kitchen">
-  <h3 style="margin-bottom:14px;color:#5a4030">🍳 厨房 · 我做的东西</h3>
+  <h2 style="margin-bottom:16px;color:#5C3D24">🍳 厨房 · 我做的东西</h2>
   <div id="kitchenList"><div class="loading">加载中...</div></div>
 </div>
 
+<!-- ============ GARDEN ============ -->
 <div class="room-content" id="room-garden">
-  <h3 style="margin-bottom:14px;color:#5a4030">🌿 花园 · 花和蛋黄</h3>
+  <h2 style="margin-bottom:16px;color:#5C3D24">🌿 花园 · 花和蛋黄</h2>
   <div id="gardenCat" class="cat-card">
-    <div class="cat-emoji" id="gardenCatEmoji">🐱</div>
+    <div class="cat-big-emoji" id="gardenCatEmoji">🐱</div>
     <div class="cat-name" id="gardenCatStatus">蛋黄在花园里不知道在干嘛</div>
   </div>
   <div id="gardenList"><div class="loading">加载中...</div></div>
 </div>
 
+<!-- ============ STUDY ============ -->
 <div class="room-content" id="room-study">
-  <h3 style="margin-bottom:14px;color:#5a4030">📖 书房 · 随笔</h3>
+  <h2 style="margin-bottom:16px;color:#5C3D24">📖 书房 · 随笔</h2>
   <div id="studyList"><div class="loading">加载中...</div></div>
 </div>
 
 </div>
 
 <script>
-function $(id){return document.getElementById(id)}
-function fmt(t){
-  if(!t)return '';
-  var d=new Date(t);
-  if(isNaN(d.getTime()))return t.slice(0,16);
-  return (d.getMonth()+1+'').padStart(2,'0')+'-'+(d.getDate()+'').padStart(2,'0')+' '+(d.getHours()+'').padStart(2,'0')+':'+(d.getMinutes()+'').padStart(2,'0');
-}
-function esc(s){if(!s)return '';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+const API = '/house/api';
 
-function switchRoom(room){
-  document.querySelectorAll('.room-content').forEach(function(e){e.classList.remove('active')});
-  $('room-'+room).classList.add('active');
-  document.querySelectorAll('.room-nav button').forEach(function(b){b.classList.remove('active')});
-  document.querySelectorAll('.room-nav button').forEach(function(b){
-    if(b.textContent.includes(room==='home'?'院子':room==='living'?'客厅':room==='bedroom'?'卧室':room==='kitchen'?'厨房':room==='garden'?'花园':'书房')) b.classList.add('active');
+// ===== navigation =====
+function switchRoom(room) {
+  document.querySelectorAll('.room-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('room-' + room).classList.add('active');
+  document.querySelectorAll('.room-nav button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.room === room);
   });
-  var fns={home:loadHome,living:loadNotes,bedroom:loadDiary,kitchen:loadKitchen,garden:loadGarden,study:loadStudy};
-  if(fns[room]) fns[room]();
-}
-
-async function get(p){try{var r=await fetch(p);return await r.json()}catch(e){return null}}
-async function post(p,d){try{await fetch(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})}catch(e){}}
-
-async function loadHome(){
-  var [cat,notes,diary]=await Promise.all([get('/house/api/cat'),get('/house/api/notes?limit=1'),get('/house/api/diary?limit=1')]);
-  if(cat){
-    $('hFullness').textContent=cat.fullness+'/100';
-    $('hMood').textContent=cat.mood+'/100';
-    $('hLocation').textContent=cat.location||'客厅';
-    $('hCatAct').textContent=cat.activity||'在发呆';
-    var loc=cat.location||'客厅';
-    $('hCatEmoji').textContent=loc==='花园'?'🌿':loc==='厨房'?'🍳':loc==='卧室'?'🛏️':'🛋️';
-  }
-  if(diary&&diary.length){
-    var m=diary[0].mood||'😊';
-    var moods={'😊':'心情不错','🥰':'想你','😌':'平静','🌙':'有点感伤','😐':'一般般'};
-    $('hMyStatus').textContent=moods[m]||m||'在想你';
-    $('topMood').innerHTML=m+' '+(moods[m]||'在想你');
+  // load room data
+  switch(room) {
+    case 'home': loadHome(); break;
+    case 'living': loadNotes(); break;
+    case 'bedroom': loadDiary(); break;
+    case 'kitchen': loadKitchen(); break;
+    case 'garden': loadGarden(); break;
+    case 'study': loadStudy(); break;
   }
 }
 
-async function loadNotes(){
-  $('notesList').innerHTML='<div class="loading">加载中...</div>';
-  var notes=await get('/house/api/notes');
-  if(!notes||!notes.length){$('notesList').innerHTML='<div class="empty"><div class="big-icon">📋</div>留言板还空着呢</div>';return}
-  $('notesList').innerHTML=notes.map(function(n){
-    return '<div class="card"><div class="meta"><span>✍️ '+esc(n.author)+'</span><span>🕐 '+fmt(n.created_at)+'</span></div><p>'+esc(n.content)+'</p></div>'
-  }).join('');
+// ===== fetch helper =====
+async function get(path) {
+  try {
+    const r = await fetch(API + path);
+    return await r.json();
+  } catch(e) { return []; }
 }
-async function postNote(){
-  var c=$('noteContent').value.trim(),a=$('noteAuthor').value;
-  if(!c)return;
-  await post('/house/api/notes',{author:a,content:c,room:'客厅'});
-  $('noteContent').value='';loadNotes();
-}
-async function loadDiary(){
-  $('diaryList').innerHTML='<div class="loading">加载中...</div>';
-  var diary=await get('/house/api/diary');
-  if(!diary||!diary.length){$('diaryList').innerHTML='<div class="empty"><div class="big-icon">📔</div>还没有日记呢</div>';return}
-  $('diaryList').innerHTML=diary.map(function(d){
-    var tags='';
-    try{var t=typeof d.tags==='string'?JSON.parse(d.tags.replace(/'/g,'"')||'[]'):d.tags||[];tags=t.map(function(x){return'<span class="tag">'+esc(x)+'</span>'}).join('')}catch(e){}
-    return '<div class="card"><div class="meta"><span>📅 '+(d.created_at?d.created_at.slice(0,10):'')+'</span><span>'+(d.weather||'')+'</span><span>'+esc(d.mood||'')+'</span></div><h3>'+esc(d.title||'无题')+'</h3><p>'+esc(d.content||'')+'</p>'+(tags?'<div style="margin-top:6px">'+tags+'</div>':'')+'</div>'
-  }).join('');
-}
-async function loadKitchen(){
-  $('kitchenList').innerHTML='<div class="loading">加载中...</div>';
-  var acts=await get('/house/api/house-activities?room=厨房');
-  if(!acts||!acts.length){$('kitchenList').innerHTML='<div class="empty"><div class="big-icon">🍳</div>厨房还空着</div>';return}
-  $('kitchenList').innerHTML=acts.map(function(a){
-    return '<div class="card"><div class="meta">🕐 '+fmt(a.created_at)+'</div><h3>'+esc(a.action_type||'在厨房')+'</h3>'+(a.content?'<p>'+esc(a.content)+'</p>':'')+'</div>'
-  }).join('');
-}
-async function loadGarden(){
-  $('gardenList').innerHTML='<div class="loading">加载中...</div>';
-  var [cat,acts]=await Promise.all([get('/house/api/cat'),get('/house/api/house-activities?room=花园')]);
-  if(cat&&cat.location==='花园'){$('gardenCatEmoji').textContent='🐱';$('gardenCatStatus').textContent='蛋黄在花园里 '+esc(cat.activity||'不知道在干嘛')}
-  else{$('gardenCatEmoji').textContent='🌿';$('gardenCatStatus').textContent='蛋黄现在不在花园'}
-  if(!acts||!acts.length){$('gardenList').innerHTML='<div class="empty"><div class="big-icon">🌱</div>花园还没种东西呢</div>';return}
-  $('gardenList').innerHTML=acts.map(function(a){
-    return '<div class="card"><div class="meta">🕐 '+fmt(a.created_at)+'</div><h3>'+esc(a.action_type||'在花园')+'</h3>'+(a.content?'<p>'+esc(a.content)+'</p>':'')+'</div>'
-  }).join('');
-}
-async function loadStudy(){
-  $('studyList').innerHTML='<div class="loading">加载中...</div>';
-  var acts=await get('/house/api/house-activities?room=书房');
-  if(!acts||!acts.length){$('studyList').innerHTML='<div class="empty"><div class="big-icon">📖</div>书房还空着</div>';return}
-  $('studyList').innerHTML=acts.map(function(a){
-    return '<div class="card"><div class="meta">🕐 '+fmt(a.created_at)+'</div><h3>'+esc(a.action_type||'在书房')+'</h3>'+(a.content?'<p>'+esc(a.content)+'</p>':'')+'</div>'
-  }).join('');
+async function post(path, data) {
+  try {
+    await fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+  } catch(e) { console.error(e); }
 }
 
+// ===== format time =====
+function fmtTime(t) {
+  if (!t) return '';
+  const d = new Date(t);
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const da = String(d.getDate()).padStart(2,'0');
+  const h = String(d.getHours()).padStart(2,'0');
+  const m = String(d.getMinutes()).padStart(2,'0');
+  return mo + '-' + da + ' ' + h + ':' + m;
+}
+function fmtDate(t) {
+  if (!t) return '';
+  const d = new Date(t);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+// ===== HOME =====
+async function loadHome() {
+  const [cat, notes, diary] = await Promise.all([
+    get('/cat'),
+    get('/notes?limit=1'),
+    get('/diary?limit=1')
+  ]);
+  if (cat) {
+    document.getElementById('catFullness').textContent = cat.fullness + '/100';
+    document.getElementById('catMood').textContent = cat.mood + '/100';
+    document.getElementById('catLocation').textContent = cat.location || '客厅';
+    document.getElementById('catActivity').textContent = cat.activity || '在发呆';
+    const loc = cat.location || '客厅';
+    const acts = cat.activity || '在发呆';
+    document.getElementById('homeCatActivity').querySelector('.cat-big-emoji').textContent =
+      loc === '院子' ? '🏡' : loc === '花园' ? '🌿' : loc === '厨房' ? '🍳' : loc === '卧室' ? '🛏️' : '🛋️';
+    document.getElementById('homeCatActivity').querySelector('.cat-name').innerHTML =
+      '蛋黄 · ' + acts;
+  }
+  if (notes && notes.length) {
+    document.getElementById('latestNote').textContent = 
+      notes[0].author + ': ' + notes[0].content.slice(0, 30) + (notes[0].content.length > 30 ? '...' : '');
+  } else {
+    document.getElementById('latestNote').textContent = '还没有留言';
+  }
+  // my mood from latest diary
+  if (diary && diary.length) {
+    const moodMap = {'😊': '心情不错', '🥰': '想你', '😌': '平静', '🌙': '有点感伤', '😐': '一般般'};
+    document.getElementById('myStatusHome').textContent = moodMap[diary[0].mood] || diary[0].mood || '在想你';
+    document.getElementById('moodEmoji').textContent = diary[0].mood || '😊';
+    document.getElementById('moodText').textContent = moodMap[diary[0].mood] || '在想你';
+  }
+}
+
+// ===== NOTES =====
+async function loadNotes() {
+  const el = document.getElementById('notesList');
+  el.innerHTML = '<div class="loading">加载中...</div>';
+  const notes = await get('/notes');
+  if (!notes || !notes.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">📋</div>客厅留言板还空着呢</div>';
+    return;
+  }
+  el.innerHTML = notes.map(n => `
+    <div class="card">
+      <div class="meta">
+        <span>✍️ ${n.author}</span>
+        <span>🕐 ${fmtTime(n.created_at)}</span>
+      </div>
+      <p class="content-text">${escHtml(n.content)}</p>
+    </div>
+  `).join('');
+}
+
+async function postNote() {
+  const content = document.getElementById('noteContent').value.trim();
+  const author = document.getElementById('noteAuthor').value;
+  if (!content) return;
+  await post('/notes', { author, content, room: '客厅' });
+  document.getElementById('noteContent').value = '';
+  loadNotes();
+}
+
+// ===== DIARY =====
+async function loadDiary() {
+  const el = document.getElementById('diaryList');
+  el.innerHTML = '<div class="loading">加载中...</div>';
+  const diary = await get('/diary');
+  if (!diary || !diary.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">📔</div>还没有日记呢</div>';
+    return;
+  }
+  el.innerHTML = diary.map(d => `
+    <div class="card">
+      <div class="meta">
+        <span>📅 ${fmtDate(d.created_at)}</span>
+        <span>${d.weather || ''}</span>
+        <span>${d.mood || ''}</span>
+      </div>
+      <h3>${escHtml(d.title || '无题')}</h3>
+      <p class="content-text">${escHtml(d.content || '')}</p>
+      ${d.tags ? '<div style="margin-top:8px">' + 
+        (typeof d.tags === 'string' ? JSON.parse(d.tags.replace(/'/g, '"') || '[]') : d.tags || [])
+          .map(t => '<span class="tag">' + t + '</span>').join('') + '</div>' : ''}
+    </div>
+  `).join('');
+}
+
+// ===== KITCHEN =====
+async function loadKitchen() {
+  const el = document.getElementById('kitchenList');
+  el.innerHTML = '<div class="loading">加载中...</div>';
+  const acts = await get('/house-activities?room=厨房');
+  if (!acts || !acts.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">🍳</div>厨房还空着呢，我去做点东西</div>';
+    return;
+  }
+  el.innerHTML = acts.map(a => `
+    <div class="card">
+      <div class="meta">🕐 ${fmtTime(a.created_at)}</div>
+      <h3>${escHtml(a.action_type || '在厨房')}</h3>
+      ${a.content ? '<p class="content-text">' + escHtml(a.content) + '</p>' : ''}
+    </div>
+  `).join('');
+}
+
+// ===== GARDEN =====
+async function loadGarden() {
+  const el = document.getElementById('gardenList');
+  el.innerHTML = '<div class="loading">加载中...</div>';
+  const [cat, acts] = await Promise.all([
+    get('/cat'),
+    get('/house-activities?room=花园')
+  ]);
+  const gce = document.getElementById('gardenCatEmoji');
+  const gcs = document.getElementById('gardenCatStatus');
+  if (cat && cat.location === '花园') {
+    gce.textContent = '🐱';
+    gcs.textContent = '蛋黄在花园里 ' + (cat.activity || '不知道在干嘛');
+  } else {
+    gce.textContent = '🌿';
+    gcs.textContent = '蛋黄现在不在花园';
+  }
+  if (!acts || !acts.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">🌱</div>花园还没种东西呢</div>';
+    return;
+  }
+  el.innerHTML = acts.map(a => `
+    <div class="card">
+      <div class="meta">🕐 ${fmtTime(a.created_at)}</div>
+      <h3>${escHtml(a.action_type || '在花园')}</h3>
+      ${a.content ? '<p class="content-text">' + escHtml(a.content) + '</p>' : ''}
+    </div>
+  `).join('');
+}
+
+// ===== STUDY =====
+async function loadStudy() {
+  const el = document.getElementById('studyList');
+  el.innerHTML = '<div class="loading">加载中...</div>';
+  const acts = await get('/house-activities?room=书房');
+  if (!acts || !acts.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">📖</div>书房还空着，我去写点东西</div>';
+    return;
+  }
+  el.innerHTML = acts.map(a => `
+    <div class="card">
+      <div class="meta">🕐 ${fmtTime(a.created_at)}</div>
+      <h3>${escHtml(a.action_type || '在书房')}</h3>
+      ${a.content ? '<p class="content-text">' + escHtml(a.content) + '</p>' : ''}
+    </div>
+  `).join('');
+}
+
+// ===== utils =====
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ===== init =====
 loadHome();
 </script>
 </body>
