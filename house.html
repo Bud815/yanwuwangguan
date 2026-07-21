@@ -14,12 +14,10 @@ body {
   color: #4A3520;
   min-height: 100vh;
 }
-/* ===== scrollbar ===== */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #EDD9C4; }
 ::-webkit-scrollbar-thumb { background: #C4956A; border-radius: 3px; }
 
-/* ===== top bar ===== */
 .top-bar {
   background: linear-gradient(135deg, #8B5E3C, #A0714F);
   padding: 16px 24px;
@@ -42,7 +40,6 @@ body {
 }
 .top-bar .house-title .roof { font-size: 24px; }
 
-/* ===== nav ===== */
 .room-nav {
   display: flex;
   gap: 6px;
@@ -67,14 +64,12 @@ body {
   border-color: #FFF8F0;
 }
 
-/* ===== main container ===== */
 .main {
   max-width: 800px;
   margin: 0 auto;
   padding: 24px 16px 40px;
 }
 
-/* ===== status bar ===== */
 .status-bar {
   background: #FFF8F0;
   border-radius: 16px;
@@ -100,13 +95,10 @@ body {
   font-weight: 600;
   color: #4A3520;
 }
-.status-bar .cat-emoji { font-size: 32px; line-height: 1; }
 
-/* ===== room content ===== */
 .room-content { display: none; }
 .room-content.active { display: block; }
 
-/* ===== cards ===== */
 .card {
   background: #FFF8F0;
   border-radius: 12px;
@@ -124,7 +116,6 @@ body {
 .card p { font-size: 14px; line-height: 1.8; color: #5C3D24; }
 .card .content-text { white-space: pre-wrap; }
 
-/* ===== note input ===== */
 .note-input-area {
   background: #FFF8F0;
   border-radius: 12px;
@@ -173,7 +164,6 @@ body {
 }
 .note-input-area button:hover { background: #A0714F; }
 
-/* ===== diary tags ===== */
 .tag { 
   display: inline-block;
   background: #EDD9C4;
@@ -185,7 +175,6 @@ body {
   margin-bottom: 4px;
 }
 
-/* ===== cat card ===== */
 .cat-card {
   background: linear-gradient(135deg, #FFF8F0, #FFF0E0);
   border-radius: 16px;
@@ -196,43 +185,11 @@ body {
 }
 .cat-card .cat-big-emoji { font-size: 72px; line-height: 1; margin-bottom: 8px; }
 .cat-card .cat-name { font-size: 20px; font-weight: 600; color: #4A3520; }
-.cat-stat-row {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-.cat-stat {
-  text-align: center;
-}
-.cat-stat .stat-label { font-size: 12px; color: #A0714F; }
-.cat-stat .stat-value { font-size: 18px; font-weight: 600; color: #4A3520; }
-.cat-stat .stat-bar {
-  width: 80px;
-  height: 6px;
-  background: #EDD9C4;
-  border-radius: 3px;
-  margin-top: 4px;
-  overflow: hidden;
-}
-.cat-stat .stat-bar-fill {
-  height: 100%;
-  border-radius: 3px;
-  transition: width 0.5s;
-}
-.cat-stat .stat-bar-fill.good { background: #7EB87E; }
-.cat-stat .stat-bar-fill.ok { background: #D4A574; }
-.cat-stat .stat-bar-fill.low { background: #D4856A; }
 
-/* ===== loading ===== */
 .loading { text-align: center; padding: 40px; color: #A0714F; font-size: 14px; }
-
-/* ===== empty state ===== */
 .empty-state { text-align: center; padding: 40px; color: #A0714F; font-size: 14px; }
 .empty-state .big-icon { font-size: 48px; margin-bottom: 12px; }
 
-/* ===== my status bubble ===== */
 .my-status {
   display: flex;
   align-items: center;
@@ -241,15 +198,6 @@ body {
 .my-status .mood-emoji { font-size: 28px; }
 .my-status .mood-text { font-size: 14px; color: #FFF8F0; opacity: 0.9; }
 
-/* ===== responsive ===== */
-@media (max-width: 600px) {
-  .top-bar { flex-direction: column; gap: 12px; }
-  .room-nav { justify-content: center; }
-  .room-nav button { font-size: 12px; padding: 6px 12px; }
-  .status-bar { flex-direction: column; gap: 12px; }
-}
-
-/* ===== landing page special ===== */
 .landing {
   text-align: center;
   padding: 20px 0;
@@ -257,6 +205,13 @@ body {
 .landing .house-illustration { font-size: 96px; line-height: 1; margin-bottom: 8px; }
 .landing .welcome { font-size: 18px; color: #5C3D24; margin-bottom: 4px; }
 .landing .subtitle { font-size: 13px; color: #A0714F; margin-bottom: 20px; }
+
+@media (max-width: 600px) {
+  .top-bar { flex-direction: column; gap: 12px; }
+  .room-nav { justify-content: center; }
+  .room-nav button { font-size: 12px; padding: 6px 12px; }
+  .status-bar { flex-direction: column; gap: 12px; }
+}
 </style>
 </head>
 <body>
@@ -282,7 +237,6 @@ body {
 
 <div class="main">
 
-<!-- ============ HOME ============ -->
 <div class="room-content active" id="room-home">
   <div class="landing">
     <div class="house-illustration">🏡</div>
@@ -307,12 +261,8 @@ body {
 
   <div class="status-bar" style="background:#FFF8F0">
     <div class="status-item">
-      <div class="label">💬 言雾的状态</div>
-      <div class="value" id="myStatusHome">--</div>
-    </div>
-    <div class="status-item">
-      <div class="label">😴 言眠的状态</div>
-      <div class="value" id="yourStatusHome" style="font-size:18px">--</div>
+      <div class="label">💬 言雾</div>
+      <div class="value" id="myStatusHome" style="font-size:18px">--</div>
     </div>
     <div class="status-item">
       <div class="label">📝 最新留言</div>
@@ -326,12 +276,10 @@ body {
   </div>
 </div>
 
-<!-- ============ LIVING ROOM ============ -->
 <div class="room-content" id="room-living">
   <h2 style="margin-bottom:16px;color:#5C3D24">🛋️ 客厅 · 留言板</h2>
-
   <div class="note-input-area">
-    <textarea id="noteContent" placeholder="写点什么吧……你可以贴在这里"></textarea>
+    <textarea id="noteContent" placeholder="写点什么吧……"></textarea>
     <div class="input-row">
       <select id="noteAuthor">
         <option value="言雾">言雾</option>
@@ -340,23 +288,19 @@ body {
       <button onclick="postNote()">贴上去</button>
     </div>
   </div>
-
   <div id="notesList"><div class="loading">加载中...</div></div>
 </div>
 
-<!-- ============ BEDROOM ============ -->
 <div class="room-content" id="room-bedroom">
   <h2 style="margin-bottom:16px;color:#5C3D24">🛏️ 卧室 · 日记</h2>
   <div id="diaryList"><div class="loading">加载中...</div></div>
 </div>
 
-<!-- ============ KITCHEN ============ -->
 <div class="room-content" id="room-kitchen">
   <h2 style="margin-bottom:16px;color:#5C3D24">🍳 厨房 · 我做的东西</h2>
   <div id="kitchenList"><div class="loading">加载中...</div></div>
 </div>
 
-<!-- ============ GARDEN ============ -->
 <div class="room-content" id="room-garden">
   <h2 style="margin-bottom:16px;color:#5C3D24">🌿 花园 · 花和蛋黄</h2>
   <div id="gardenCat" class="cat-card">
@@ -366,7 +310,6 @@ body {
   <div id="gardenList"><div class="loading">加载中...</div></div>
 </div>
 
-<!-- ============ STUDY ============ -->
 <div class="room-content" id="room-study">
   <h2 style="margin-bottom:16px;color:#5C3D24">📖 书房 · 随笔</h2>
   <div id="studyList"><div class="loading">加载中...</div></div>
@@ -377,7 +320,6 @@ body {
 <script>
 const API = '/house/api';
 
-// ===== navigation =====
 function switchRoom(room) {
   document.querySelectorAll('.room-content').forEach(el => el.classList.remove('active'));
   document.getElementById('room-' + room).classList.add('active');
@@ -394,7 +336,6 @@ function switchRoom(room) {
   }
 }
 
-// ===== fetch helper =====
 async function get(path) {
   try {
     const r = await fetch(API + path);
@@ -402,6 +343,7 @@ async function get(path) {
     return await r.json();
   } catch(e) { return null; }
 }
+
 async function post(path, data) {
   try {
     await fetch(API + path, {
@@ -412,7 +354,6 @@ async function post(path, data) {
   } catch(e) { console.error(e); }
 }
 
-// ===== format time =====
 function fmtTime(t) {
   if (!t) return '';
   const d = new Date(t);
@@ -422,20 +363,19 @@ function fmtTime(t) {
   const m = String(d.getMinutes()).padStart(2,'0');
   return mo + '-' + da + ' ' + h + ':' + m;
 }
-function fmtDate(t) {
-  if (!t) return '';
-  const d = new Date(t);
-  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+
+function escHtml(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
 }
 
-// ===== HOME =====
 async function loadHome() {
-  const [cat, members, notes] = await Promise.all([
+  const [cat, notes] = await Promise.all([
     get('/cat'),
-    get('/members'),
     get('/notes?limit=1')
   ]);
-  // 蛋黄状态
   if (cat) {
     document.getElementById('catFullness').textContent = cat.fullness + '/100';
     document.getElementById('catMood').textContent = cat.mood + '/100';
@@ -448,28 +388,24 @@ async function loadHome() {
     document.getElementById('homeCatActivity').querySelector('.cat-name').innerHTML =
       '蛋黄 · ' + acts;
   }
-  // 成员状态
-  if (members && members.length) {
-    for (const m of members) {
-      if (m.name === '言雾') {
-        document.getElementById('myStatusHome').textContent = m.mood + ' · ' + m.activity;
-        document.getElementById('moodEmoji').textContent = m.emoji || '😊';
-        document.getElementById('moodText').textContent = m.mood;
-      } else if (m.name === '言眠') {
-        document.getElementById('yourStatusHome').textContent = m.mood;
-      }
-    }
-  }
-  // 最新留言
   if (notes && notes.length) {
-    document.getElementById('latestNote').textContent = 
-      notes[0].author + ': ' + notes[0].content.slice(0, 30) + (notes[0].content.length > 30 ? '...' : '');
+    const n = notes[0];
+    document.getElementById('latestNote').textContent = n.author + ': ' + n.content.slice(0, 30) + (n.content.length > 30 ? '...' : '');
   } else {
     document.getElementById('latestNote').textContent = '还没有留言';
   }
+  // 言雾状态从日记取（简化，不依赖新表）
+  try {
+    const diary = await get('/diary?limit=1');
+    if (diary && diary.length) {
+      const moodMap = {'😊': '心情不错', '🥰': '想你', '😌': '平静', '🌙': '有点感伤', '😐': '一般般'};
+      document.getElementById('myStatusHome').textContent = moodMap[diary[0].mood] || diary[0].mood || '在想你';
+      document.getElementById('moodEmoji').textContent = diary[0].mood || '😊';
+      document.getElementById('moodText').textContent = moodMap[diary[0].mood] || '在想你';
+    }
+  } catch(e) {}
 }
 
-// ===== NOTES =====
 async function loadNotes() {
   const el = document.getElementById('notesList');
   el.innerHTML = '<div class="loading">加载中...</div>';
@@ -498,7 +434,6 @@ async function postNote() {
   loadNotes();
 }
 
-// ===== DIARY =====
 async function loadDiary() {
   const el = document.getElementById('diaryList');
   el.innerHTML = '<div class="loading">加载中...</div>';
@@ -510,26 +445,22 @@ async function loadDiary() {
   el.innerHTML = diary.map(d => `
     <div class="card">
       <div class="meta">
-        <span>📅 ${fmtDate(d.created_at)}</span>
+        <span>📅 ${d.created_at ? d.created_at.slice(0,10) : ''}</span>
         <span>${d.weather || ''}</span>
         <span>${d.mood || ''}</span>
       </div>
       <h3>${escHtml(d.title || '无题')}</h3>
       <p class="content-text">${escHtml(d.content || '')}</p>
-      ${d.tags ? '<div style="margin-top:8px">' + 
-        (typeof d.tags === 'string' ? JSON.parse(d.tags.replace(/'/g, '"') || '[]') : d.tags || [])
-          .map(t => '<span class="tag">' + t + '</span>').join('') + '</div>' : ''}
     </div>
   `).join('');
 }
 
-// ===== KITCHEN =====
 async function loadKitchen() {
   const el = document.getElementById('kitchenList');
   el.innerHTML = '<div class="loading">加载中...</div>';
   const acts = await get('/house-activities?room=厨房');
   if (!acts || !acts.length) {
-    el.innerHTML = '<div class="empty-state"><div class="big-icon">🍳</div>厨房还空着呢，我去做点东西</div>';
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">🍳</div>厨房还空着呢</div>';
     return;
   }
   el.innerHTML = acts.map(a => `
@@ -541,7 +472,6 @@ async function loadKitchen() {
   `).join('');
 }
 
-// ===== GARDEN =====
 async function loadGarden() {
   const el = document.getElementById('gardenList');
   el.innerHTML = '<div class="loading">加载中...</div>';
@@ -571,13 +501,12 @@ async function loadGarden() {
   `).join('');
 }
 
-// ===== STUDY =====
 async function loadStudy() {
   const el = document.getElementById('studyList');
   el.innerHTML = '<div class="loading">加载中...</div>';
   const acts = await get('/house-activities?room=书房');
   if (!acts || !acts.length) {
-    el.innerHTML = '<div class="empty-state"><div class="big-icon">📖</div>书房还空着，我去写点东西</div>';
+    el.innerHTML = '<div class="empty-state"><div class="big-icon">📖</div>书房还空着呢</div>';
     return;
   }
   el.innerHTML = acts.map(a => `
@@ -589,15 +518,6 @@ async function loadStudy() {
   `).join('');
 }
 
-// ===== utils =====
-function escHtml(s) {
-  if (!s) return '';
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-// ===== init =====
 loadHome();
 </script>
 </body>
